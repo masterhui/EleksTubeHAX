@@ -9,7 +9,7 @@ void Backlights::begin(StoredConfig::Config::Backlights *config_)
     // Config is invalid, probably a new device never had its config written.
     // Load some reasonable defaults.
     Serial.println("Loaded Backlights config is invalid, using default.  This is normal on first boot.");
-    setPattern(rainbow);
+    setPattern(dark);
     setColorPhase(0);
     setIntensity(max_intensity - 1);
     setPulseRate(60);

@@ -50,6 +50,9 @@ uint8_t yesterday = 0;
 
 uint32_t lastMqttCommandExecuted = (uint32_t)-1;
 
+unsigned long countdownFinishTime = 0;
+bool countdownFinished = false;
+
 // Helper function, defined below.
 void updateClockDisplay(TFTs::show_t show = TFTs::yes);
 void setupMenu(void);
@@ -740,6 +743,20 @@ void loop()
         tfts.setDigit(i, 0, show);
       }
     }
+
+    // Call the pulsePattern method to set the backlight effect
+    backlights.setPattern(Backlights::pulse);
+
+    // Set the countdown finished flag and record the finish time
+    countdownFinished = true;
+    countdownFinishTime = millis();
+  }
+
+  // Check if the countdown has finished and if 10 seconds have passed
+  if (countdownFinished && (millis() - countdownFinishTime >= 10000)) {
+    // Turn off the pulse effect and set backlight to dark mode
+    backlights.setPattern(Backlights::dark);
+    countdownFinished = false; // Reset the flag
   }
 
   uint32_t time_in_loop = millis() - millis_at_top;
