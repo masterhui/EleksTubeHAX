@@ -1,6 +1,9 @@
 #include "Clock.h"
 #include "WiFi_WPS.h"
 
+// Constants
+const uint32_t NTP_UPDATE_INTERVAL_MS = 3600000; // Update NTP every hour (3600000ms)
+
 #if defined(HARDWARE_SI_HAI_CLOCK) || defined(HARDWARE_IPSTUBE_CLOCK) // for Clocks with DS1302 chip #SI HAI or IPSTUBE XXXXXXXXXXXXXXXXXX
 // If it is a SI HAI Clock, use differnt RTC chip drivers
 #include <ThreeWire.h>
@@ -95,14 +98,33 @@ void Clock::begin(StoredConfig::Config::Clock *config_)
 
 void Clock::loop()
 {
+  // Get current time from NTP if needed
+  if (WiFi.status() == WL_CONNECTED && ((millis() - millis_last_ntp) > NTP_UPDATE_INTERVAL_MS)) {
+    ntpTimeClient.update();
+    millis_last_ntp = millis();
+  }
+
+  // If in countdown mode, update display with countdown digits
+  if (countdown_mode) {
+    tfts.setDigit(HOURS_TENS, getCountdownHoursTens(), TFTs::show_t::yes);
+    tfts.setDigit(HOURS_ONES, getCountdownHoursOnes(), TFTs::show_t::yes);
+    tfts.setDigit(MINUTES_TENS, getCountdownMinutesTens(), TFTs::show_t::yes);
+    tfts.setDigit(MINUTES_ONES, getCountdownMinutesOnes(), TFTs::show_t::yes);
+    tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), TFTs::show_t::yes);
+    tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), TFTs::show_t::yes);
+    return;
+  }
+
+  // Normal clock time display
+  time_t epochTime = ntpTimeClient.getEpochTime() + config->time_zone_offset;
   if (timeStatus() == timeNotSet)
   {
     time_valid = false;
   }
   else
   {
-    loop_time = now();
-    local_time = loop_time + config->time_zone_offset;
+    loop_time = epochTime;
+    local_time = loop_time;
     time_valid = true;
   }
 }
@@ -173,3 +195,58 @@ uint8_t Clock::getHoursTens()
 uint32_t Clock::millis_last_ntp = 0;
 WiFiUDP Clock::ntpUDP;
 NTPClient Clock::ntpTimeClient(ntpUDP);
+
+void Clock::startCountdown(uint32_t seconds) {
+    countdown_duration = seconds;
+    countdown_start = millis();
+    countdown_running = true;
+    countdown_mode = true;
+}
+
+void Clock::stopCountdown() {
+    countdown_running = false;
+    countdown_mode = false;
+}
+
+void Clock::toggleCountdownMode() {
+    countdown_mode = !countdown_mode;
+}
+
+uint32_t Clock::getRemainingSeconds() {
+    if (!countdown_running) {
+        countdown_mode = false;  // Also exit countdown mode when not running
+        return 0;
+    }
+    
+    uint32_t elapsed = (millis() - countdown_start) / 1000;
+    if (elapsed >= countdown_duration) {
+        countdown_running = false;
+        countdown_mode = false;  // Exit countdown mode when time is up
+        return 0;
+    }
+    return countdown_duration - elapsed;
+}
+
+uint8_t Clock::getCountdownHoursTens() {
+    return (getRemainingSeconds() / 3600) / 10;
+}
+
+uint8_t Clock::getCountdownHoursOnes() {
+    return (getRemainingSeconds() / 3600) % 10;
+}
+
+uint8_t Clock::getCountdownMinutesTens() {
+    return ((getRemainingSeconds() % 3600) / 60) / 10;
+}
+
+uint8_t Clock::getCountdownMinutesOnes() {
+    return ((getRemainingSeconds() % 3600) / 60) % 10;
+}
+
+uint8_t Clock::getCountdownSecondsTens() {
+    return (getRemainingSeconds() % 60) / 10;
+}
+
+uint8_t Clock::getCountdownSecondsOnes() {
+    return (getRemainingSeconds() % 60) % 10;
+}

@@ -214,7 +214,10 @@ void loop()
       MqttCommandBlankZeroHoursReceived ||
       MqttCommandPulseBpmReceived ||
       MqttCommandBreathBpmReceived ||
-      MqttCommandRainbowSecReceived;
+      MqttCommandRainbowSecReceived ||
+      MqttCommandCountdownStartReceived ||
+      MqttCommandCountdownStopReceived ||
+      MqttCommandCountdownToggleReceived;
 
   if (MqttCommandPowerReceived)
   {
@@ -396,6 +399,23 @@ void loop()
     backlights.setRainbowDuration(MqttCommandRainbowSec);
   }
 
+  if (MqttCommandCountdownStartReceived)
+  {
+    MqttCommandCountdownStartReceived = false;
+    uclock.startCountdown(MqttCommandCountdownDuration);
+  }
+  if (MqttCommandCountdownStopReceived)
+  {
+    uclock.stopCountdown();
+    MqttCommandCountdownStopReceived = false;
+  }
+
+  if (MqttCommandCountdownToggleReceived)
+  {
+    MqttCommandCountdownToggleReceived = false;
+    uclock.toggleCountdownMode();
+  }
+
   MqttStatusPower = tfts.isEnabled();
   MqttStatusMainPower = tfts.isEnabled();
   MqttStatusBackPower = backlights.getPower();
@@ -414,11 +434,13 @@ void loop()
   MqttStatusPulseBpm = backlights.getPulseRate();
   MqttStatusBreathBpm = backlights.getBreathRate();
   MqttStatusRainbowSec = backlights.getRainbowDuration();
+  MqttStatusCountdownMode = uclock.isCountdownMode();
+  MqttStatusCountdownRunning = uclock.isCountdownRunning();
+  MqttStatusCountdownRemaining = uclock.getRemainingSeconds();
 
   if (MqttCommandReceived)
   {
     lastMqttCommandExecuted = millis();
-
     MqttReportBackEverything(true);
   }
 
@@ -704,6 +726,22 @@ void loop()
     }
   } // if (menu.stateChanged())
 
+  if (uclock.isCountdownMode() && !uclock.isCountdownRunning()) {
+    // Countdown has finished - flash all displays
+    static uint32_t last_flash = 0;
+    static bool flash_state = false;
+    
+    if (millis() - last_flash > 500) {  // Flash every 500ms
+      last_flash = millis();
+      flash_state = !flash_state;
+      
+      TFTs::show_t show = flash_state ? TFTs::show_t::yes : TFTs::show_t::no;
+      for (int i = 0; i < 6; i++) {
+        tfts.setDigit(i, 0, show);
+      }
+    }
+  }
+
   uint32_t time_in_loop = millis() - millis_at_top;
   if (time_in_loop < 20)
   {
@@ -912,11 +950,24 @@ void UpdateDstEveryNight()
 
 void updateClockDisplay(TFTs::show_t show)
 {
-  // refresh starting on seconds
-  tfts.setDigit(SECONDS_ONES, uclock.getSecondsOnes(), show);
-  tfts.setDigit(SECONDS_TENS, uclock.getSecondsTens(), show);
-  tfts.setDigit(MINUTES_ONES, uclock.getMinutesOnes(), show);
-  tfts.setDigit(MINUTES_TENS, uclock.getMinutesTens(), show);
-  tfts.setDigit(HOURS_ONES, uclock.getHoursOnes(), show);
-  tfts.setDigit(HOURS_TENS, uclock.getHoursTens(), show);
+    // Don't update clock display if we're in countdown mode
+    if (uclock.isCountdownMode()) {
+        // Update countdown display
+        tfts.setDigit(HOURS_TENS, uclock.getCountdownHoursTens(), show);
+        tfts.setDigit(HOURS_ONES, uclock.getCountdownHoursOnes(), show);
+        tfts.setDigit(MINUTES_TENS, uclock.getCountdownMinutesTens(), show);
+        tfts.setDigit(MINUTES_ONES, uclock.getCountdownMinutesOnes(), show);
+        tfts.setDigit(SECONDS_TENS, uclock.getCountdownSecondsTens(), show);
+        tfts.setDigit(SECONDS_ONES, uclock.getCountdownSecondsOnes(), show);
+        return;
+    }
+
+    // Original clock display code follows...
+    // refresh starting on seconds
+    tfts.setDigit(SECONDS_ONES, uclock.getSecondsOnes(), show);
+    tfts.setDigit(SECONDS_TENS, uclock.getSecondsTens(), show);
+    tfts.setDigit(MINUTES_ONES, uclock.getMinutesOnes(), show);
+    tfts.setDigit(MINUTES_TENS, uclock.getMinutesTens(), show);
+    tfts.setDigit(HOURS_ONES, uclock.getHoursOnes(), show);
+    tfts.setDigit(HOURS_TENS, uclock.getHoursTens(), show);
 }

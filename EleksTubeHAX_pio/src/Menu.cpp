@@ -1,4 +1,5 @@
 #include "Menu.h"
+#include "Clock.h"
 
 // Big ol' state machine: menu and buttons as the state, buttons as the transition triggers.
 
@@ -80,6 +81,22 @@ void Menu::loop(Buttons &buttons)
     state_changed = true;
     return;
   }
+
+  // Map button states to ButtonPress enum
+  if (left_state == Button::up_edge) {
+    button_press = BUTTON_DOWN;
+  } else if (right_state == Button::up_edge) {
+    button_press = BUTTON_UP;
+  } else if (mode_state == Button::up_edge) {
+    button_press = BUTTON_SELECT;
+  } else if (power_state == Button::up_edge) {
+    button_press = BUTTON_BACK;
+  } else if (power_state == Button::up_long_edge) {
+    button_press = BUTTON_START;
+  } else {
+    button_press = BUTTON_NONE;
+  }
+
   // Some other button state, but it doesn't trigger any change in state.  There are LOTS of states that will
   // get here, but I think they're all "just do nothing."  If there's an explicit state we want to handle,
   // add an if() block above.
@@ -147,6 +164,15 @@ void Menu::loop(Buttons &buttons)
     return;
   }
 
+  // Map button states to ButtonPress enum
+  if (mode_state == Button::up_edge) {
+    button_press = BUTTON_SELECT;
+  } else if (mode_state == Button::up_long_edge) {
+    button_press = BUTTON_START;
+  } else {
+    button_press = BUTTON_NONE;
+  }
+
   // Some other button state, but it doesn't trigger any change in state.  There are LOTS of states that will
   // get here, but I think they're all "just do nothing."  If there's an explicit state we want to handle,
   // add an if() block above.
@@ -163,7 +189,8 @@ const String Menu::state_str[Menu::num_states] = {
     "blank_hours_zero",
     "utc_offset_hour",
     "utc_offset_15m",
-    "selected_graphic"};
+    "selected_graphic",
+    "countdown_timer"};
 #else
 const String Menu::state_str[Menu::num_states] = {
     "idle",
@@ -175,5 +202,88 @@ const String Menu::state_str[Menu::num_states] = {
     "utc_offset_hour",
     "utc_offset_15m",
     "selected_graphic",
-    "start_wps"};
+    "start_wps",
+    "countdown_timer"};
 #endif
+
+void Menu::handleCountdownTimer() {
+    static uint32_t countdown_hours = 0;
+    static uint32_t countdown_minutes = 0;
+    static uint32_t countdown_seconds = 0;
+    static uint8_t setting_position = 0; // 0=hours, 1=minutes, 2=seconds
+    
+    switch (button_press) {
+        case BUTTON_SELECT:
+            setting_position = (setting_position + 1) % 3;
+            break;
+            
+        case BUTTON_UP:
+            switch (setting_position) {
+                case 0: // Hours
+                    countdown_hours = (countdown_hours + 1) % 100;
+                    break;
+                case 1: // Minutes
+                    countdown_minutes = (countdown_minutes + 1) % 60;
+                    break;
+                case 2: // Seconds
+                    countdown_seconds = (countdown_seconds + 1) % 60;
+                    break;
+            }
+            break;
+            
+        case BUTTON_DOWN:
+            switch (setting_position) {
+                case 0: // Hours
+                    countdown_hours = countdown_hours > 0 ? countdown_hours - 1 : 99;
+                    break;
+                case 1: // Minutes
+                    countdown_minutes = countdown_minutes > 0 ? countdown_minutes - 1 : 59;
+                    break;
+                case 2: // Seconds
+                    countdown_seconds = countdown_seconds > 0 ? countdown_seconds - 1 : 59;
+                    break;
+            }
+            break;
+            
+        case BUTTON_BACK:
+            state = idle;
+            return;
+            
+        case BUTTON_START:
+            uint32_t total_seconds = countdown_hours * 3600 + 
+                                   countdown_minutes * 60 + 
+                                   countdown_seconds;
+            if (total_seconds > 0) {
+                uclock.startCountdown(total_seconds);
+                state = idle;
+                return;
+            }
+            break;
+    }
+    
+    // Update display
+    tfts.setDigit(HOURS_TENS, countdown_hours / 10, TFTs::show_t::yes);
+    tfts.setDigit(HOURS_ONES, countdown_hours % 10, TFTs::show_t::yes);
+    tfts.setDigit(MINUTES_TENS, countdown_minutes / 10, TFTs::show_t::yes);
+    tfts.setDigit(MINUTES_ONES, countdown_minutes % 10, TFTs::show_t::yes);
+    tfts.setDigit(SECONDS_TENS, countdown_seconds / 10, TFTs::show_t::yes);
+    tfts.setDigit(SECONDS_ONES, countdown_seconds % 10, TFTs::show_t::yes);
+    
+    // Blink the current setting position
+    if (millis() % 1000 > 500) {
+        switch (setting_position) {
+            case 0: // Hours
+                tfts.setDigit(HOURS_TENS, 0xFF, TFTs::show_t::no);
+                tfts.setDigit(HOURS_ONES, 0xFF, TFTs::show_t::no);
+                break;
+            case 1: // Minutes
+                tfts.setDigit(MINUTES_TENS, 0xFF, TFTs::show_t::no);
+                tfts.setDigit(MINUTES_ONES, 0xFF, TFTs::show_t::no);
+                break;
+            case 2: // Seconds
+                tfts.setDigit(SECONDS_TENS, 0xFF, TFTs::show_t::no);
+                tfts.setDigit(SECONDS_ONES, 0xFF, TFTs::show_t::no);
+                break;
+        }
+    }
+}

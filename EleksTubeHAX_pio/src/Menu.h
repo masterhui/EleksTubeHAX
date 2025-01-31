@@ -28,6 +28,7 @@ public:
     utc_offset_hour,     // Change the UTC offset by an hour.
     utc_offset_15m,      // Change the UTC offset by 15 minutes.
     selected_graphic,    // Select clock "font" 0...9 -> first char in file name "00.bmp to 90.bmp".
+    countdown_timer,     // Add this line
     // When there's more things to change in the menu, add them here.
     num_states
   };
@@ -44,6 +45,7 @@ public:
     utc_offset_15m,      // Change the UTC offset by 15 minutes.
     selected_graphic,    // Select clock "font" 0...9 -> first char in file name "00.bmp to 90.bmp".
     start_wps,           // connect to WiFi using wps pushbutton mode
+    countdown_timer,     // Add this line
     // When there's more things to change in the menu, add them here.
     num_states
   };
@@ -57,6 +59,16 @@ public:
   String getStateStr() { return state_str[state]; }
   bool stateChanged() { return (state_changed); }
 
+  // Add these enum definitions after the existing states enum
+  enum ButtonPress {
+    BUTTON_SELECT,
+    BUTTON_UP,
+    BUTTON_DOWN,
+    BUTTON_BACK,
+    BUTTON_START,
+    BUTTON_NONE
+  };
+
 private:
   const uint16_t idle_timeout_ms = 10000; // Timeout and return to idle after 10 seconds of inactivity.
 
@@ -66,6 +78,8 @@ private:
                  // For now, these are only +1 and -1. But we might enable acceleration or similar later.
   uint32_t millis_last_button_press;
   bool state_changed; // So we're not redrawing the screen every damn time, signal if the state has changed.
+  ButtonPress button_press;
+  void handleCountdownTimer();
 };
 
 #endif // MENU_H

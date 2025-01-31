@@ -40,6 +40,13 @@ extern uint8_t MqttCommandBreathBpm;
 extern bool MqttCommandBreathBpmReceived;
 extern float MqttCommandRainbowSec;
 extern bool MqttCommandRainbowSecReceived;
+extern bool MqttCommandCountdownStart;
+extern bool MqttCommandCountdownStartReceived;
+extern uint32_t MqttCommandCountdownDuration;
+extern bool MqttCommandCountdownStop;
+extern bool MqttCommandCountdownStopReceived;
+extern bool MqttCommandCountdownToggle;
+extern bool MqttCommandCountdownToggleReceived;
 
 // status to server
 extern bool MqttStatusPower;
@@ -60,6 +67,11 @@ extern bool MqttStatusBlankZeroHours;
 extern uint8_t MqttStatusPulseBpm;
 extern uint8_t MqttStatusBreathBpm;
 extern float MqttStatusRainbowSec;
+
+// Add with other extern declarations
+extern bool MqttStatusCountdownMode;
+extern bool MqttStatusCountdownRunning;
+extern uint32_t MqttStatusCountdownRemaining;
 
 // functions
 void MqttStart();

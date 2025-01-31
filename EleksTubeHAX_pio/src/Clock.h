@@ -16,7 +16,8 @@
 class Clock
 {
 public:
-  Clock() : loop_time(0), local_time(0), time_valid(false), config(NULL) {}
+  Clock() : loop_time(0), local_time(0), time_valid(false), config(NULL),
+           countdown_mode(false), countdown_start(0), countdown_duration(0), countdown_running(false) {}
 
   // The global WiFi from WiFi.h must already be .begin()'d before calling Clock::begin()
   void begin(StoredConfig::Config::Clock *config_);
@@ -96,6 +97,22 @@ public:
   uint8_t getSecondsTens() { return getSecond() / 10; }
   uint8_t getSecondsOnes() { return getSecond() % 10; }
 
+  // New countdown methods
+  void startCountdown(uint32_t seconds);
+  void stopCountdown();
+  void toggleCountdownMode();
+  bool isCountdownMode() { return countdown_mode; }
+  bool isCountdownRunning() { return countdown_running; }
+  uint32_t getRemainingSeconds();
+  
+  // Methods to get countdown digits
+  uint8_t getCountdownHoursTens();
+  uint8_t getCountdownHoursOnes();
+  uint8_t getCountdownMinutesTens();
+  uint8_t getCountdownMinutesOnes();
+  uint8_t getCountdownSecondsTens();
+  uint8_t getCountdownSecondsOnes();
+
   time_t loop_time, local_time;
 
 private:
@@ -107,6 +124,12 @@ private:
   static NTPClient ntpTimeClient;
   static uint32_t millis_last_ntp;
   const static uint32_t refresh_ntp_every_ms = 3600000; // Get new NTP every hour, use RTC in between.
+
+  // New countdown timer members
+  bool countdown_mode;
+  uint32_t countdown_start;
+  uint32_t countdown_duration;
+  bool countdown_running;
 };
 
 extern Clock uclock;

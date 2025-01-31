@@ -142,6 +142,32 @@ uint8_t LastSentPulseBpm = -1;
 uint8_t LastSentBreathBpm = -1;
 float LastSentRainbowSec = -1;
 
+// Add these with the other command variables
+bool MqttCommandCountdownStart = false;
+bool MqttCommandCountdownStartReceived = false;
+bool MqttCommandCountdownStop = false;
+bool MqttCommandCountdownStopReceived = false;
+bool MqttCommandCountdownToggle = false;
+bool MqttCommandCountdownToggleReceived = false;
+uint32_t MqttCommandCountdownDuration = 0;
+
+// Add these at the top with other LastSent variables
+bool LastSentCountdownMode = false;
+bool LastSentCountdownRunning = false;
+uint32_t LastSentCountdownRemaining = 0;
+
+// Add with other variables at the top
+unsigned long lastCountdownReport = 0;
+const unsigned long COUNTDOWN_REPORT_MIN_INTERVAL = 500; // minimum 500ms between reports
+
+// Add with other status variables
+bool MqttStatusCountdownMode = false;
+bool MqttStatusCountdownRunning = false;
+uint32_t MqttStatusCountdownRemaining = 0;
+
+// Add this with other command variables (around line 67-73)
+bool MqttCommandReceived = false;
+
 double round1(double value)
 {
   return (int)(value * 10 + 0.5) / 10.0;
@@ -316,6 +342,29 @@ void MqttReportState(bool force)
       Serial.print(" ");
       Serial.println(buffer);
     }
+
+    // Report countdown state
+    bool countdownStateChanged = 
+        LastSentCountdownMode != MqttStatusCountdownMode ||
+        LastSentCountdownRunning != MqttStatusCountdownRunning ||
+        LastSentCountdownRemaining != MqttStatusCountdownRemaining;
+
+    if ((force || countdownStateChanged) && 
+        (millis() - lastCountdownReport > COUNTDOWN_REPORT_MIN_INTERVAL)) {
+        LastSentCountdownMode = MqttStatusCountdownMode;
+        LastSentCountdownRunning = MqttStatusCountdownRunning;
+        LastSentCountdownRemaining = MqttStatusCountdownRemaining;
+        lastCountdownReport = millis();
+        
+        JsonDocument doc;
+        doc["mode"] = MqttStatusCountdownMode ? "countdown" : "clock";
+        doc["remaining"] = MqttStatusCountdownRemaining;
+        doc["running"] = MqttStatusCountdownRunning;
+        
+        char json_buffer[200];
+        serializeJson(doc, json_buffer);
+        sendToBroker("countdown", json_buffer);
+    }
   }
 #endif
 }
@@ -389,6 +438,16 @@ void MqttStart()
     MQTTclient.subscribe(subscribeTopic);
 
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/rainbow_duration/set", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+
+    // Subscribe to countdown control topics
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/countdown/start", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+    
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/countdown/stop", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+    
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/countdown/toggle", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
 #endif
   }
@@ -594,6 +653,28 @@ void callback(char *topic, byte *payload, unsigned int length)
       MqttCommandRainbowSecReceived = true;
     }
     doc.clear();
+  }
+
+  // Add new countdown commands handling
+  if (strcmp(command[0], "countdown") == 0) {
+      if (strcmp(command[1], "start") == 0) {
+          uint32_t duration = atoi(message);
+          if (duration > 0) {  // Only start if we have a valid duration
+              MqttCommandCountdownDuration = duration;
+              MqttCommandCountdownStart = true;
+              MqttCommandCountdownStartReceived = true;
+              Serial.print("Starting countdown with duration: ");
+              Serial.println(duration);
+          }
+      }
+      else if (strcmp(command[1], "stop") == 0) {
+          MqttCommandCountdownStop = true;
+          MqttCommandCountdownStopReceived = true;
+      }
+      else if (strcmp(command[1], "toggle") == 0) {
+          MqttCommandCountdownToggle = true;
+          MqttCommandCountdownToggleReceived = true;
+      }
   }
 #endif
 }
@@ -949,6 +1030,33 @@ void MqttReportDiscovery()
   Serial.println(json_buffer);
   discovery.clear();
 
+  // Add countdown control
+  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
+  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
+  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
+  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
+  discovery["device"]["connections"][0][0] = "mac";
+  discovery["device"]["connections"][0][1] = WiFi.macAddress();
+  discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown");
+  discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown");
+  discovery["entity_category"] = "config";
+  discovery["name"] = "Countdown Control";
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
+  discovery["schema"] = "json";
+  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
+
+  size_t countdown_n = serializeJson(discovery, json_buffer);
+  const char *countdown_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown/switch/config");
+  MQTTclient.publish(countdown_topic, json_buffer, true);
+  delay(120);
+  Serial.print("TX MQTT: ");
+  Serial.print(countdown_topic);
+  Serial.print(" ");
+  Serial.println(json_buffer);
+  discovery.clear();
 #endif
 }
 
@@ -986,4 +1094,24 @@ void MqttPeriodicReportBack()
 #endif
     MqttReportBackEverything(true);
   }
+}
+
+void MqttProcessCommand() {
+    // Process countdown commands
+    if (MqttCommandCountdownStart) {
+        Serial.print("Starting countdown with duration: ");
+        Serial.println(MqttCommandCountdownDuration);
+        uclock.startCountdown(MqttCommandCountdownDuration);
+        MqttCommandCountdownStart = false;
+        MqttCommandReceived = true;
+    }
+    if (MqttCommandCountdownStop) {
+        uclock.stopCountdown();
+        MqttCommandCountdownStop = false;
+        MqttCommandReceived = true;
+    }
+    if (MqttCommandCountdownToggle) {
+        uclock.toggleCountdownMode();
+        MqttCommandCountdownToggle = false;
+    }
 }
