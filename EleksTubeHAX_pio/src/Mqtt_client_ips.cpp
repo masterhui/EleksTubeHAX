@@ -39,7 +39,6 @@ PubSubClient MQTTclient(espClient);
 int splitCommand(char *topic, char *tokens[], int tokensNumber);
 void callback(char *topic, byte *payload, unsigned int length);
 
-void MqttProcessCommand();
 void MqttReportBattery();
 void MqttReportStatus();
 void MqttReportPowerState();
@@ -103,6 +102,16 @@ bool MqttCommandBreathBpmReceived = false;
 float MqttCommandRainbowSec = -1;
 bool MqttCommandRainbowSecReceived = false;
 
+bool MqttCommandCountdownStart = false;
+bool MqttCommandCountdownStartReceived = false;
+uint32_t MqttCommandCountdownDuration = 0;
+
+bool MqttCommandCountdownStop = false;
+bool MqttCommandCountdownStopReceived = false;
+
+bool MqttCommandCountdownToggle = false;
+bool MqttCommandCountdownToggleReceived = false;
+
 // status to server
 bool MqttStatusPower = true;
 bool MqttStatusMainPower = true;
@@ -141,32 +150,14 @@ bool LastSentBlankZeroHours = false;
 uint8_t LastSentPulseBpm = -1;
 uint8_t LastSentBreathBpm = -1;
 float LastSentRainbowSec = -1;
-
-// Add these with the other command variables
-bool MqttCommandCountdownStart = false;
-bool MqttCommandCountdownStartReceived = false;
-bool MqttCommandCountdownStop = false;
-bool MqttCommandCountdownStopReceived = false;
-bool MqttCommandCountdownToggle = false;
-bool MqttCommandCountdownToggleReceived = false;
-uint32_t MqttCommandCountdownDuration = 0;
-
-// Add these at the top with other LastSent variables
 bool LastSentCountdownMode = false;
 bool LastSentCountdownRunning = false;
 uint32_t LastSentCountdownRemaining = 0;
-
-// Add with other variables at the top
-unsigned long lastCountdownReport = 0;
-const unsigned long COUNTDOWN_REPORT_MIN_INTERVAL = 500; // minimum 500ms between reports
 
 // Add with other status variables
 bool MqttStatusCountdownMode = false;
 bool MqttStatusCountdownRunning = false;
 uint32_t MqttStatusCountdownRemaining = 0;
-
-// Add this with other command variables (around line 67-73)
-bool MqttCommandReceived = false;
 
 double round1(double value)
 {
@@ -346,15 +337,11 @@ void MqttReportState(bool force)
     // Report countdown state
     bool countdownStateChanged = 
         LastSentCountdownMode != MqttStatusCountdownMode ||
-        LastSentCountdownRunning != MqttStatusCountdownRunning ||
-        LastSentCountdownRemaining != MqttStatusCountdownRemaining;
+        LastSentCountdownRunning != MqttStatusCountdownRunning;
 
-    if ((force || countdownStateChanged) && 
-        (millis() - lastCountdownReport > COUNTDOWN_REPORT_MIN_INTERVAL)) {
+    if (force || countdownStateChanged) {
         LastSentCountdownMode = MqttStatusCountdownMode;
         LastSentCountdownRunning = MqttStatusCountdownRunning;
-        LastSentCountdownRemaining = MqttStatusCountdownRemaining;
-        lastCountdownReport = millis();
         
         JsonDocument doc;
         doc["mode"] = MqttStatusCountdownMode ? "countdown" : "clock";
@@ -1094,24 +1081,4 @@ void MqttPeriodicReportBack()
 #endif
     MqttReportBackEverything(true);
   }
-}
-
-void MqttProcessCommand() {
-    // Process countdown commands
-    if (MqttCommandCountdownStart) {
-        Serial.print("Starting countdown with duration: ");
-        Serial.println(MqttCommandCountdownDuration);
-        uclock.startCountdown(MqttCommandCountdownDuration);
-        MqttCommandCountdownStart = false;
-        MqttCommandReceived = true;
-    }
-    if (MqttCommandCountdownStop) {
-        uclock.stopCountdown();
-        MqttCommandCountdownStop = false;
-        MqttCommandReceived = true;
-    }
-    if (MqttCommandCountdownToggle) {
-        uclock.toggleCountdownMode();
-        MqttCommandCountdownToggle = false;
-    }
 }

@@ -32,7 +32,7 @@
 
 // ************ MQTT config *********************
 #define MQTT_RECONNECT_WAIT_SEC 30      // how long to wait between retries to connect to broker
-#define MQTT_REPORT_STATUS_EVERY_SEC 15 // How often report status to MQTT Broker
+#define MQTT_REPORT_STATUS_EVERY_SEC 60 // How often report status to MQTT Broker
 
 // ************ Temperature config *********************
 #define TEMPERATURE_READ_EVERY_SEC 60 // how often to read the temperature sensor (if present)
