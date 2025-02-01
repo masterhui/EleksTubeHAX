@@ -414,12 +414,14 @@ void loop()
   {
     uclock.stopCountdown();
     MqttCommandCountdownStopReceived = false;
+    tfts.enableAllDisplays(); // Turn on all 6 displays
   }
 
   if (MqttCommandCountdownToggleReceived)
   {
     MqttCommandCountdownToggleReceived = false;
     uclock.toggleCountdownMode();
+    tfts.enableAllDisplays(); // Turn on all 6 displays
   }
 
   MqttStatusPower = tfts.isEnabled();
@@ -756,8 +758,8 @@ void loop()
     countdownHandled = true;
   }
 
-  // Check if the countdown has finished and if 10 seconds have passed
-  if (countdownFinished && (millis() - countdownFinishTime >= 10000)) {
+  // Check if the countdown has finished and if 20 seconds have passed
+  if (countdownFinished && (millis() - countdownFinishTime >= 20000)) {
     // Turn off the pulse effect and set backlight to dark mode
     backlights.setPattern(Backlights::dark);
     tfts.disableAllDisplays(); // Turn off all 6 displays

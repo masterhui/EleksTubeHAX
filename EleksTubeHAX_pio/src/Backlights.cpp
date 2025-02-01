@@ -108,7 +108,10 @@ void Backlights::loop()
 
 void Backlights::pulsePattern()
 {
-  fill(phaseToColor(config->color_phase));
+  //fill(phaseToColor(config->color_phase));
+  // Force the color to red for pulse effect
+  uint32_t redColor = Adafruit_NeoPixel::Color(255, 0, 0);
+  fill(redColor);
 
   float pulse_length_millis = (60.0f * 1000) / config->pulse_bpm;
   float val = 1 + abs(sin(2 * M_PI * millis() / pulse_length_millis)) * 254;
