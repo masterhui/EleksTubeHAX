@@ -113,6 +113,8 @@ public:
   uint8_t getCountdownSecondsTens();
   uint8_t getCountdownSecondsOnes();
 
+  void updateCountdownDisplay(TFTs::show_t show);
+
   time_t loop_time, local_time;
 
 private:

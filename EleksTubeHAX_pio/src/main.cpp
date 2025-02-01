@@ -501,7 +501,10 @@ void loop()
   checkDimmingNeeded(); // night or day time brightness change
 #endif
 
-  updateClockDisplay(); // Draw only the changed clock digits!
+  if (!uclock.isCountdownMode()) {
+    Serial.println("updateClockDisplay()");
+    updateClockDisplay(); // Draw only the changed clock digits!
+  }
 
   UpdateDstEveryNight();
 

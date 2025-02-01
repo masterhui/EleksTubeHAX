@@ -218,7 +218,16 @@ void TFTs::showDigit(uint8_t digit)
   }
   else
   {
-    uint8_t file_index = current_graphic * 10 + digits[digit];
+    uint8_t file_index;
+    
+    // Check if the digit is meant to be a colon
+    if (digits[digit] == COLON_INDEX) {
+        // Calculate the colon bitmap index based on the current clockface
+        file_index = current_graphic * 100;
+    } else {
+        file_index = current_graphic * 10 + digits[digit];
+    }
+
     DrawImage(file_index);
 
     uint8_t NextNumber = digits[SECONDS_ONES] + 1;

@@ -106,12 +106,8 @@ void Clock::loop()
 
   // If in countdown mode, update display with countdown digits
   if (countdown_mode) {
-    tfts.setDigit(HOURS_TENS, getCountdownHoursTens(), TFTs::show_t::yes);
-    tfts.setDigit(HOURS_ONES, getCountdownHoursOnes(), TFTs::show_t::yes);
-    tfts.setDigit(MINUTES_TENS, getCountdownMinutesTens(), TFTs::show_t::yes);
-    tfts.setDigit(MINUTES_ONES, getCountdownMinutesOnes(), TFTs::show_t::yes);
-    tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), TFTs::show_t::yes);
-    tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), TFTs::show_t::yes);
+    Serial.println("updateCountdownDisplay()");
+    updateCountdownDisplay(TFTs::show_t::yes);
     return;
   }
 
@@ -249,4 +245,27 @@ uint8_t Clock::getCountdownSecondsTens() {
 
 uint8_t Clock::getCountdownSecondsOnes() {
     return (getRemainingSeconds() % 60) % 10;
+}
+
+void Clock::updateCountdownDisplay(TFTs::show_t show) {
+    if (getRemainingSeconds() < 3600) { // Less than 1 hour
+        // Use 4 displays for mm:ss and 1 for the colon
+        tfts.setDigit(HOURS_TENS, getCountdownHoursOnes(), show);
+        tfts.setDigit(HOURS_ONES, getCountdownMinutesTens(), show);
+        tfts.setDigit(MINUTES_TENS, getCountdownMinutesOnes(), show);
+        
+        // Set the colon using the special index
+        tfts.setDigit(MINUTES_ONES, COLON_INDEX, show);
+        
+        tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), show);
+        tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), show);
+    } else {
+        // Use all 6 displays for hh:mm:ss
+        tfts.setDigit(HOURS_TENS, getCountdownHoursTens(), show);
+        tfts.setDigit(HOURS_ONES, getCountdownHoursOnes(), show);
+        tfts.setDigit(MINUTES_TENS, getCountdownMinutesTens(), show);
+        tfts.setDigit(MINUTES_ONES, getCountdownMinutesOnes(), show);
+        tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), show);
+        tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), show);
+    }
 }

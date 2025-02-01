@@ -11,6 +11,8 @@
 #include <TFT_eSPI.h>
 #include "ChipSelect.h"
 
+#define COLON_INDEX 10 // Use an index that doesn't conflict with other digits
+
 class TFTs : public TFT_eSPI
 {
 public:
