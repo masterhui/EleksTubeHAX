@@ -52,6 +52,7 @@ uint32_t lastMqttCommandExecuted = (uint32_t)-1;
 
 unsigned long countdownFinishTime = 0;
 bool countdownFinished = false;
+bool countdownHandled = false;
 
 // Helper function, defined below.
 void updateClockDisplay(TFTs::show_t show = TFTs::yes);
@@ -406,6 +407,8 @@ void loop()
   {
     MqttCommandCountdownStartReceived = false;
     uclock.startCountdown(MqttCommandCountdownDuration);
+    countdownHandled = false; // Reset the flag
+    tfts.enableAllDisplays(); // Turn on all 6 displays
   }
   if (MqttCommandCountdownStopReceived)
   {
@@ -729,7 +732,7 @@ void loop()
     }
   } // if (menu.stateChanged())
 
-  if (uclock.isCountdownMode() && !uclock.isCountdownRunning()) {
+  if (uclock.isCountdownMode() && !uclock.isCountdownRunning() && !countdownHandled) {
     // Countdown has finished - flash all displays
     static uint32_t last_flash = 0;
     static bool flash_state = false;
@@ -750,12 +753,14 @@ void loop()
     // Set the countdown finished flag and record the finish time
     countdownFinished = true;
     countdownFinishTime = millis();
+    countdownHandled = true;
   }
 
   // Check if the countdown has finished and if 10 seconds have passed
   if (countdownFinished && (millis() - countdownFinishTime >= 10000)) {
     // Turn off the pulse effect and set backlight to dark mode
     backlights.setPattern(Backlights::dark);
+    tfts.disableAllDisplays(); // Turn off all 6 displays
     countdownFinished = false; // Reset the flag
   }
 
