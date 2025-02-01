@@ -106,7 +106,6 @@ void Clock::loop()
 
   // If in countdown mode, update display with countdown digits
   if (countdown_mode) {
-    Serial.println("updateCountdownDisplay()");
     updateCountdownDisplay(TFTs::show_t::yes);
     return;
   }
@@ -249,8 +248,10 @@ uint8_t Clock::getCountdownSecondsOnes() {
 
 void Clock::updateCountdownDisplay(TFTs::show_t show) {
     if (getRemainingSeconds() < 3600) { // Less than 1 hour
+        // Turn off the display with index 5
+        tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes);
+
         // Use 4 displays for mm:ss and 1 for the colon
-        tfts.setDigit(HOURS_TENS, getCountdownHoursOnes(), show);
         tfts.setDigit(HOURS_ONES, getCountdownMinutesTens(), show);
         tfts.setDigit(MINUTES_TENS, getCountdownMinutesOnes(), show);
         

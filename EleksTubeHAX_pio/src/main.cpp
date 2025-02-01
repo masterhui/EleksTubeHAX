@@ -502,7 +502,6 @@ void loop()
 #endif
 
   if (!uclock.isCountdownMode()) {
-    Serial.println("updateClockDisplay()");
     updateClockDisplay(); // Draw only the changed clock digits!
   }
 

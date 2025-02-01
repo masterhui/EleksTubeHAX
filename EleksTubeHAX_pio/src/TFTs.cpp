@@ -229,11 +229,6 @@ void TFTs::showDigit(uint8_t digit)
     }
 
     DrawImage(file_index);
-
-    uint8_t NextNumber = digits[SECONDS_ONES] + 1;
-    if (NextNumber > 9)
-      NextNumber = 0; // pre-load only seconds, because they are drawn first
-    NextFileRequired = current_graphic * 10 + NextNumber;
   }
 #ifdef HARDWARE_IPSTUBE_CLOCK
   chip_select.update();
