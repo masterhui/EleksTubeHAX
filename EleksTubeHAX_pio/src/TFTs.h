@@ -11,8 +11,6 @@
 #include <TFT_eSPI.h>
 #include "ChipSelect.h"
 
-#define COLON_INDEX 10 // Use an index that doesn't conflict with other digits
-
 class TFTs : public TFT_eSPI
 {
 public:
@@ -44,15 +42,15 @@ public:
   void showNoMqttStatus();
   void showTemperature();
 
-  void setDigit(uint8_t digit, uint8_t value, show_t show = yes);
+  void setDigit(uint8_t digit, uint8_t value, show_t show, bool isColon = false);
   uint8_t getDigit(uint8_t digit) { return digits[digit]; }
 
   void showAllDigits()
   {
     for (uint8_t digit = 0; digit < NUM_DIGITS; digit++)
-      showDigit(digit);
+      showDigit(digit, false);
   }
-  void showDigit(uint8_t digit);
+  void showDigit(uint8_t digit, bool isColon);
 
   // Controls the power to all displays
   void enableAllDisplays();
@@ -77,8 +75,8 @@ private:
 
   bool FileExists(const char *path);
   int8_t CountNumberOfClockFaces();
-  bool LoadImageIntoBuffer(uint8_t file_index);
-  void DrawImage(uint8_t file_index);
+  bool LoadImageIntoBuffer(uint16_t file_index);
+  void DrawImage(uint16_t file_index);
   uint16_t read16(fs::File &f);
   uint32_t read32(fs::File &f);
 

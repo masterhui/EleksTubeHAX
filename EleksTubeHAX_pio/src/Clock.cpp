@@ -256,7 +256,7 @@ void Clock::updateCountdownDisplay(TFTs::show_t show) {
         tfts.setDigit(MINUTES_TENS, getCountdownMinutesOnes(), show);
         
         // Set the colon using the special index
-        tfts.setDigit(MINUTES_ONES, COLON_INDEX, show);
+        tfts.setDigit(MINUTES_ONES, 0, show, true);
         
         tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), show);
         tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), show);

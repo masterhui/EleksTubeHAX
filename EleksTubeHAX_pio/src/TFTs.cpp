@@ -176,26 +176,24 @@ void TFTs::showTemperature()
 #endif
 }
 
-void TFTs::setDigit(uint8_t digit, uint8_t value, show_t show)
+void TFTs::setDigit(uint8_t digit, uint8_t value, show_t show, bool isColon)
 {
   uint8_t old_value = digits[digit];
   digits[digit] = value;
 
   if (show != no && (old_value != value || show == force))
   {
-    showDigit(digit);
+    showDigit(digit, isColon);
 
-    if (digit == SECONDS_ONES)
-      if (WifiState != connected)
-      {
-        showNoWifiStatus();
-      }
+    if (digit == SECONDS_ONES && WifiState != connected)
+    {
+      showNoWifiStatus();
+    }
 
-    if (digit == SECONDS_TENS)
-      if (!MqttConnected)
-      {
-        showNoMqttStatus();
-      }
+    if (digit == SECONDS_TENS && !MqttConnected)
+    {
+      showNoMqttStatus();
+    }
 
     if (digit == HOURS_ONES)
     {
@@ -208,7 +206,7 @@ void TFTs::setDigit(uint8_t digit, uint8_t value, show_t show)
  * Displays the bitmap for the value to the given digit.
  */
 
-void TFTs::showDigit(uint8_t digit)
+void TFTs::showDigit(uint8_t digit, bool isColon)
 {
   chip_select.setDigit(digit);
 
@@ -218,11 +216,9 @@ void TFTs::showDigit(uint8_t digit)
   }
   else
   {
-    uint8_t file_index;
+    uint16_t file_index;
     
-    // Check if the digit is meant to be a colon
-    if (digits[digit] == COLON_INDEX) {
-        // Calculate the colon bitmap index based on the current clockface
+    if (isColon) {
         file_index = current_graphic * 100;
     } else {
         file_index = current_graphic * 10 + digits[digit];
@@ -315,7 +311,7 @@ int8_t TFTs::CountNumberOfClockFaces()
   return found;
 }
 
-bool TFTs::LoadImageIntoBuffer(uint8_t file_index)
+bool TFTs::LoadImageIntoBuffer(uint16_t file_index)
 {
   uint32_t StartTime = millis();
 
@@ -617,7 +613,7 @@ bool TFTs::LoadImageIntoBuffer(uint8_t file_index)
 }
 #endif
 
-void TFTs::DrawImage(uint8_t file_index)
+void TFTs::DrawImage(uint16_t file_index)
 {
 
   uint32_t StartTime = millis();
