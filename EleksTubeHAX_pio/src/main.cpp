@@ -56,6 +56,7 @@ bool countdownHandled = false;
 
 // Helper function, defined below.
 void updateClockDisplay(TFTs::show_t show = TFTs::yes);
+void updateCountdownDisplay(TFTs::show_t show);
 void setupMenu(void);
 #ifdef DIMMING
 bool isNightTime(uint8_t current_hour);
@@ -501,8 +502,14 @@ void loop()
   checkDimmingNeeded(); // night or day time brightness change
 #endif
 
+  // Check if the countdown mode is active
+  if (uclock.isCountdownMode()) {
+    updateCountdownDisplay(TFTs::show_t::yes);
+  }
+
+  // Other display updates or logic
   if (!uclock.isCountdownMode()) {
-    updateClockDisplay(); // Draw only the changed clock digits!
+    updateClockDisplay(TFTs::show_t::yes);
   }
 
   UpdateDstEveryNight();
@@ -996,4 +1003,48 @@ void updateClockDisplay(TFTs::show_t show)
     tfts.setDigit(MINUTES_TENS, uclock.getMinutesTens(), show);
     tfts.setDigit(HOURS_ONES, uclock.getHoursOnes(), show);
     tfts.setDigit(HOURS_TENS, uclock.getHoursTens(), show);
+}
+
+void updateCountdownDisplay(TFTs::show_t show) {
+    static bool colonVisible = true;
+    static unsigned long lastToggleTime = 0;
+    unsigned long currentTime = millis();
+
+    // Calculate the time elapsed since the last toggle
+    unsigned long elapsedTime = currentTime - lastToggleTime;
+
+    // Blink pattern: visible for 800ms, off for 200ms
+    if (colonVisible && elapsedTime >= 800) {
+        colonVisible = false;
+        lastToggleTime = currentTime;
+    } else if (!colonVisible && elapsedTime >= 200) {
+        colonVisible = true;
+        lastToggleTime = currentTime;
+    }
+
+    if (uclock.getRemainingSeconds() < 3600) { // Less than 1 hour
+        tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes);
+
+        // Use 4 displays for mm:ss and 1 for the colon
+        tfts.setDigit(HOURS_ONES, uclock.getCountdownMinutesTens(), show);
+        tfts.setDigit(MINUTES_TENS, uclock.getCountdownMinutesOnes(), show);
+
+        // Blink the colon on display #2
+        if (colonVisible) {
+            tfts.setDigit(MINUTES_ONES, 0, show, true);
+        } else {
+            tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes);
+        }
+
+        tfts.setDigit(SECONDS_TENS, uclock.getCountdownSecondsTens(), show);
+        tfts.setDigit(SECONDS_ONES, uclock.getCountdownSecondsOnes(), show);
+    } else {
+        // Use all 6 displays for hh:mm:ss
+        tfts.setDigit(HOURS_TENS, uclock.getCountdownHoursTens(), show);
+        tfts.setDigit(HOURS_ONES, uclock.getCountdownHoursOnes(), show);
+        tfts.setDigit(MINUTES_TENS, uclock.getCountdownMinutesTens(), show);
+        tfts.setDigit(MINUTES_ONES, uclock.getCountdownMinutesOnes(), show);
+        tfts.setDigit(SECONDS_TENS, uclock.getCountdownSecondsTens(), show);
+        tfts.setDigit(SECONDS_ONES, uclock.getCountdownSecondsOnes(), show);
+    }
 }

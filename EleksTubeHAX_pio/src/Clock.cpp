@@ -104,12 +104,6 @@ void Clock::loop()
     millis_last_ntp = millis();
   }
 
-  // If in countdown mode, update display with countdown digits
-  if (countdown_mode) {
-    updateCountdownDisplay(TFTs::show_t::yes);
-    return;
-  }
-
   // Normal clock time display
   time_t epochTime = ntpTimeClient.getEpochTime() + config->time_zone_offset;
   if (timeStatus() == timeNotSet)
@@ -246,47 +240,3 @@ uint8_t Clock::getCountdownSecondsOnes() {
     return (getRemainingSeconds() % 60) % 10;
 }
 
-void Clock::updateCountdownDisplay(TFTs::show_t show) {
-    static bool colonVisible = true;
-    static unsigned long lastToggleTime = 0;
-    unsigned long currentTime = millis();
-
-    // Calculate the time elapsed since the last toggle
-    unsigned long elapsedTime = currentTime - lastToggleTime;
-
-    // Blink pattern: visible for 800ms, off for 200ms
-    if (colonVisible && elapsedTime >= 800) {
-        colonVisible = false;
-        lastToggleTime = currentTime;
-    } else if (!colonVisible && elapsedTime >= 200) {
-        colonVisible = true;
-        lastToggleTime = currentTime;
-    }
-
-    if (getRemainingSeconds() < 3600) { // Less than 1 hour
-        // Turn off the display #5
-        tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes);
-
-        // Use 4 displays for mm:ss and 1 for the colon
-        tfts.setDigit(HOURS_ONES, getCountdownMinutesTens(), show);
-        tfts.setDigit(MINUTES_TENS, getCountdownMinutesOnes(), show);
-
-        // Blink the colon on display #2
-        if (colonVisible) {
-            tfts.setDigit(MINUTES_ONES, 0, show, true);
-        } else {
-            tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes);
-        }
-
-        tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), show);
-        tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), show);
-    } else {
-        // Use all 6 displays for hh:mm:ss
-        tfts.setDigit(HOURS_TENS, getCountdownHoursTens(), show);
-        tfts.setDigit(HOURS_ONES, getCountdownHoursOnes(), show);
-        tfts.setDigit(MINUTES_TENS, getCountdownMinutesTens(), show);
-        tfts.setDigit(MINUTES_ONES, getCountdownMinutesOnes(), show);
-        tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), show);
-        tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), show);
-    }
-}
