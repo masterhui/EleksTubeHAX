@@ -247,17 +247,37 @@ uint8_t Clock::getCountdownSecondsOnes() {
 }
 
 void Clock::updateCountdownDisplay(TFTs::show_t show) {
+    static bool colonVisible = true;
+    static unsigned long lastToggleTime = 0;
+    unsigned long currentTime = millis();
+
+    // Calculate the time elapsed since the last toggle
+    unsigned long elapsedTime = currentTime - lastToggleTime;
+
+    // Blink pattern: visible for 800ms, off for 200ms
+    if (colonVisible && elapsedTime >= 800) {
+        colonVisible = false;
+        lastToggleTime = currentTime;
+    } else if (!colonVisible && elapsedTime >= 200) {
+        colonVisible = true;
+        lastToggleTime = currentTime;
+    }
+
     if (getRemainingSeconds() < 3600) { // Less than 1 hour
-        // Turn off the display with index 5
+        // Turn off the display #5
         tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes);
 
         // Use 4 displays for mm:ss and 1 for the colon
         tfts.setDigit(HOURS_ONES, getCountdownMinutesTens(), show);
         tfts.setDigit(MINUTES_TENS, getCountdownMinutesOnes(), show);
-        
-        // Set the colon using the special index
-        tfts.setDigit(MINUTES_ONES, 0, show, true);
-        
+
+        // Blink the colon on display #2
+        if (colonVisible) {
+            tfts.setDigit(MINUTES_ONES, 0, show, true);
+        } else {
+            tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes);
+        }
+
         tfts.setDigit(SECONDS_TENS, getCountdownSecondsTens(), show);
         tfts.setDigit(SECONDS_ONES, getCountdownSecondsOnes(), show);
     } else {
