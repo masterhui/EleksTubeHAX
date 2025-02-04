@@ -189,28 +189,20 @@ void Clock::startCountdown(uint32_t seconds) {
     countdown_duration = seconds;
     countdown_start = millis();
     countdown_running = true;
-    countdown_mode = true;
 }
 
 void Clock::stopCountdown() {
     countdown_running = false;
-    countdown_mode = false;
-}
-
-void Clock::toggleCountdownMode() {
-    countdown_mode = !countdown_mode;
 }
 
 uint32_t Clock::getRemainingSeconds() {
     if (!countdown_running) {
-        //countdown_mode = false;  // Also exit countdown mode when not running
         return 0;
     }
     
     uint32_t elapsed = (millis() - countdown_start) / 1000;
     if (elapsed >= countdown_duration) {
         countdown_running = false;
-        //countdown_mode = false;  // Exit countdown mode when time is up
         return 0;
     }
     return countdown_duration - elapsed;

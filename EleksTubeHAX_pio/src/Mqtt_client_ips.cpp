@@ -109,9 +109,6 @@ uint32_t MqttCommandCountdownDuration = 0;
 bool MqttCommandCountdownStop = false;
 bool MqttCommandCountdownStopReceived = false;
 
-bool MqttCommandCountdownToggle = false;
-bool MqttCommandCountdownToggleReceived = false;
-
 // status to server
 bool MqttStatusPower = true;
 bool MqttStatusMainPower = true;
@@ -155,7 +152,6 @@ bool LastSentCountdownRunning = false;
 uint32_t LastSentCountdownRemaining = 0;
 
 // Add with other status variables
-bool MqttStatusCountdownMode = false;
 bool MqttStatusCountdownRunning = false;
 uint32_t MqttStatusCountdownRemaining = 0;
 
@@ -342,40 +338,6 @@ void MqttReportState(bool force)
       Serial.println(buffer);
     }
 
-    // Report countdown state
-    // if (force || MqttStatusCountdownRemaining != LastSentCountdownRemaining)
-    // {
-    // bool countdownStateChanged = 
-    //     LastSentCountdownMode != MqttStatusCountdownMode ||
-    //     LastSentCountdownRunning != MqttStatusCountdownRunning;
-
-    // if (force || countdownStateChanged) {
-    //     LastSentCountdownMode = MqttStatusCountdownMode;
-    //     LastSentCountdownRunning = MqttStatusCountdownRunning;
-        
-    //     JsonDocument doc;
-    //     doc["mode"] = MqttStatusCountdownMode ? "countdown" : "clock";
-    //     doc["remaining"] = MqttStatusCountdownRemaining;
-    //     doc["running"] = MqttStatusCountdownRunning ? MQTT_STATE_ON : MQTT_STATE_OFF;
-        
-    //     char json_buffer[256];
-    //     serializeJson(doc, json_buffer);
-    //     sendToBroker("countdown", json_buffer);
-
-    //   JsonDocument state;
-    //   state["state"] = MqttStatusCountdownRemaining;
-
-    //   char buffer[256];
-    //   size_t n = serializeJson(state, buffer);
-    //   const char *topic = concat2(MQTT_CLIENT, "/countdown");
-    //   MQTTclient.publish(topic, buffer, true);
-    //   LastSentCountdownRemaining = MqttStatusCountdownRemaining;
-
-    //   Serial.print("TX MQTT: ");
-    //   Serial.print(topic);
-    //   Serial.print(" ");
-    //   Serial.println(buffer);
-    // }
   }
 #endif
 }
@@ -456,9 +418,6 @@ void MqttStart()
     MQTTclient.subscribe(subscribeTopic);
     
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/countdown/stop", MQTT_CLIENT);
-    MQTTclient.subscribe(subscribeTopic);
-    
-    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/countdown/toggle", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
 
     // Subscribe to the temperature status topic
@@ -700,10 +659,6 @@ void callback(char *topic, byte *payload, unsigned int length)
       else if (strcmp(command[1], "stop") == 0) {
           MqttCommandCountdownStop = true;
           MqttCommandCountdownStopReceived = true;
-      }
-      else if (strcmp(command[1], "toggle") == 0) {
-          MqttCommandCountdownToggle = true;
-          MqttCommandCountdownToggleReceived = true;
       }
   }
 

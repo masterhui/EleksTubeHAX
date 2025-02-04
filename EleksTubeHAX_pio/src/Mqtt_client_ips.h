@@ -45,8 +45,6 @@ extern bool MqttCommandCountdownStartReceived;
 extern uint32_t MqttCommandCountdownDuration;
 extern bool MqttCommandCountdownStop;
 extern bool MqttCommandCountdownStopReceived;
-extern bool MqttCommandCountdownToggle;
-extern bool MqttCommandCountdownToggleReceived;
 extern float MqttCommandTemperature;
 extern bool MqttCommandTemperatureReceived;
 extern float MqttCommandHumidity;
@@ -75,7 +73,6 @@ extern uint8_t MqttStatusBreathBpm;
 extern float MqttStatusRainbowSec;
 
 // Add with other extern declarations
-extern bool MqttStatusCountdownMode;
 extern bool MqttStatusCountdownRunning;
 extern uint32_t MqttStatusCountdownRemaining;
 

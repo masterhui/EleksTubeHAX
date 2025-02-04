@@ -233,7 +233,6 @@ void loop()
       MqttCommandRainbowSecReceived ||
       MqttCommandCountdownStartReceived ||
       MqttCommandCountdownStopReceived ||
-      MqttCommandCountdownToggleReceived ||
       MqttCommandModeReceived;
 
   if (MqttCommandPowerReceived)
@@ -431,13 +430,6 @@ void loop()
     tfts.enableAllDisplays(); // Turn on all 6 displays
   }
 
-  if (MqttCommandCountdownToggleReceived)
-  {
-    MqttCommandCountdownToggleReceived = false;
-    uclock.toggleCountdownMode();
-    tfts.enableAllDisplays(); // Turn on all 6 displays
-  }
-
   if (MqttCommandModeReceived) {
     if (strcmp(MqttCommandMode, "clock") == 0) {
         currentMode = CLOCK;
@@ -481,8 +473,7 @@ void loop()
   MqttStatusPulseBpm = backlights.getPulseRate();
   MqttStatusBreathBpm = backlights.getBreathRate();
   MqttStatusRainbowSec = backlights.getRainbowDuration();
-  MqttStatusCountdownMode = uclock.isCountdownMode();
-  MqttStatusCountdownRunning = uclock.isCountdownRunning();
+    MqttStatusCountdownRunning = uclock.isCountdownRunning();
   MqttStatusCountdownRemaining = uclock.getRemainingSeconds();
 
   if (MqttCommandReceived)
@@ -774,7 +765,7 @@ void loop()
     }
   } // if (menu.stateChanged())
 
-  if (uclock.isCountdownMode() && !uclock.isCountdownRunning() && !countdownHandled) {
+  if (currentMode == COUNTDOWN && !uclock.isCountdownRunning() && !countdownHandled) {
     // Countdown has finished - flash all displays
     static uint32_t last_flash = 0;
     static bool flash_state = false;
