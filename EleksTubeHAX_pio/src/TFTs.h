@@ -29,6 +29,14 @@ public:
     yes,
     force
   };
+
+  enum SpecialSymbol {
+    NONE,
+    COLON,
+    PERCENT,
+    CELSIUS
+  };
+
   // A digit of 0xFF means blank the screen.
   const static uint8_t blanked = 255;
 
@@ -42,15 +50,15 @@ public:
   void showNoMqttStatus();
   void showTemperature();
 
-  void setDigit(uint8_t digit, uint8_t value, show_t show, bool isColon = false);
+  void setDigit(uint8_t digit, uint8_t value, show_t show, SpecialSymbol symbol = NONE);
   uint8_t getDigit(uint8_t digit) { return digits[digit]; }
 
   void showAllDigits()
   {
     for (uint8_t digit = 0; digit < NUM_DIGITS; digit++)
-      showDigit(digit, false);
+      showDigit(digit, TFTs::NONE);
   }
-  void showDigit(uint8_t digit, bool isColon);
+  void showDigit(uint8_t digit, SpecialSymbol symbol);
 
   // Controls the power to all displays
   void enableAllDisplays();

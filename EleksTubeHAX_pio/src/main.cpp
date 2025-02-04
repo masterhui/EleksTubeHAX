@@ -446,6 +446,8 @@ void loop()
         currentMode = SENSOR_DISPLAY;
     }
     MqttCommandModeReceived = false;
+    tfts.enableAllDisplays(); // Turn on all 6 displays
+    updateDisplay(TFTs::force);
   }
 
   if (MqttCommandTemperatureReceived) {
@@ -1009,6 +1011,16 @@ void UpdateDstEveryNight()
   }
 }
 
+void updateDisplay(TFTs::show_t show) {
+    if (currentMode == SENSOR_DISPLAY) {
+        updateSensorDisplay(show);
+    } else if (currentMode == COUNTDOWN) {
+        updateCountdownDisplay(show);
+    } else {
+        updateClockDisplay(show);
+    }
+}
+
 void updateClockDisplay(TFTs::show_t show)
 {
     // refresh starting on seconds
@@ -1046,7 +1058,7 @@ void updateCountdownDisplay(TFTs::show_t show) {
 
         // Blink the colon on display #2
         if (colonVisible) {
-            tfts.setDigit(MINUTES_ONES, 0, show, true);
+            tfts.setDigit(MINUTES_ONES, 0, show, TFTs::COLON);
         } else {
             tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes);
         }
@@ -1071,7 +1083,7 @@ void updateSensorDisplay(TFTs::show_t show) {
     tfts.setDigit(HOURS_ONES, temperature % 10, show); // Display #4
 
     // Display "°C" image on display #3
-    tfts.setDigit(MINUTES_TENS, 0, show, true); // Assuming 0 is the index for "°C" image
+    tfts.setDigit(MINUTES_TENS, 0, show, TFTs::CELSIUS); // For Celsius
 
     // Display humidity as two integer digits on displays #2 and #1
     int humidity = static_cast<int>(MqttCommandHumidity);
@@ -1079,15 +1091,5 @@ void updateSensorDisplay(TFTs::show_t show) {
     tfts.setDigit(SECONDS_TENS, humidity % 10, show); // Display #1
 
     // Display "%" image on display #0
-    tfts.setDigit(SECONDS_ONES, 0, show, true); // Assuming 0 is the index for "%" image
-}
-
-void updateDisplay(TFTs::show_t show) {
-    if (currentMode == SENSOR_DISPLAY) {
-        updateSensorDisplay(show);
-    } else if (currentMode == COUNTDOWN) {
-        updateCountdownDisplay(show);
-    } else {
-        updateClockDisplay(show);
-    }
+    tfts.setDigit(SECONDS_ONES, 0, show, TFTs::PERCENT); // For Percent
 }

@@ -176,14 +176,23 @@ void TFTs::showTemperature()
 #endif
 }
 
-void TFTs::setDigit(uint8_t digit, uint8_t value, show_t show, bool isColon)
+void TFTs::setDigit(uint8_t digit, uint8_t value, show_t show, SpecialSymbol symbol)
 {
+//   Serial.print("setDigit called with: digit=");
+//   Serial.print(digit);
+//   Serial.print(", value=");
+//   Serial.print(value);
+//   Serial.print(", show=");
+//   Serial.print(show);
+//   Serial.print(", symbol=");
+//   Serial.println(symbol);
+
   uint8_t old_value = digits[digit];
   digits[digit] = value;
 
   if (show != no && (old_value != value || show == force))
   {
-    showDigit(digit, isColon);
+    showDigit(digit, symbol);
 
     if (digit == SECONDS_ONES && WifiState != connected)
     {
@@ -206,7 +215,7 @@ void TFTs::setDigit(uint8_t digit, uint8_t value, show_t show, bool isColon)
  * Displays the bitmap for the value to the given digit.
  */
 
-void TFTs::showDigit(uint8_t digit, bool isColon)
+void TFTs::showDigit(uint8_t digit, SpecialSymbol symbol)
 {
   chip_select.setDigit(digit);
 
@@ -218,10 +227,19 @@ void TFTs::showDigit(uint8_t digit, bool isColon)
   {
     uint16_t file_index;
     
-    if (isColon) {
-        file_index = current_graphic * 100;
-    } else {
-        file_index = current_graphic * 10 + digits[digit];
+    switch (symbol) {
+        case COLON:
+            file_index = current_graphic * 100; // Matching colon for clockface as index 100 ... 700
+            break;
+        case PERCENT:
+            file_index = current_graphic * 100 + 1; // Matching percent for clockface as index 101 ... 701
+            break;
+        case CELSIUS:
+            file_index = current_graphic * 100 + 2; // Matching celsius for clockface as index 102 ... 702
+            break;
+        default:
+            file_index = current_graphic * 10 + digits[digit];
+            break;
     }
 
     DrawImage(file_index);
