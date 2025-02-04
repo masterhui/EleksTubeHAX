@@ -335,23 +335,39 @@ void MqttReportState(bool force)
     }
 
     // Report countdown state
-    bool countdownStateChanged = 
-        LastSentCountdownMode != MqttStatusCountdownMode ||
-        LastSentCountdownRunning != MqttStatusCountdownRunning;
+    // if (force || MqttStatusCountdownRemaining != LastSentCountdownRemaining)
+    // {
+    // bool countdownStateChanged = 
+    //     LastSentCountdownMode != MqttStatusCountdownMode ||
+    //     LastSentCountdownRunning != MqttStatusCountdownRunning;
 
-    if (force || countdownStateChanged) {
-        LastSentCountdownMode = MqttStatusCountdownMode;
-        LastSentCountdownRunning = MqttStatusCountdownRunning;
+    // if (force || countdownStateChanged) {
+    //     LastSentCountdownMode = MqttStatusCountdownMode;
+    //     LastSentCountdownRunning = MqttStatusCountdownRunning;
         
-        JsonDocument doc;
-        doc["mode"] = MqttStatusCountdownMode ? "countdown" : "clock";
-        doc["remaining"] = MqttStatusCountdownRemaining;
-        doc["running"] = MqttStatusCountdownRunning;
+    //     JsonDocument doc;
+    //     doc["mode"] = MqttStatusCountdownMode ? "countdown" : "clock";
+    //     doc["remaining"] = MqttStatusCountdownRemaining;
+    //     doc["running"] = MqttStatusCountdownRunning ? MQTT_STATE_ON : MQTT_STATE_OFF;
         
-        char json_buffer[200];
-        serializeJson(doc, json_buffer);
-        sendToBroker("countdown", json_buffer);
-    }
+    //     char json_buffer[256];
+    //     serializeJson(doc, json_buffer);
+    //     sendToBroker("countdown", json_buffer);
+
+    //   JsonDocument state;
+    //   state["state"] = MqttStatusCountdownRemaining;
+
+    //   char buffer[256];
+    //   size_t n = serializeJson(state, buffer);
+    //   const char *topic = concat2(MQTT_CLIENT, "/countdown");
+    //   MQTTclient.publish(topic, buffer, true);
+    //   LastSentCountdownRemaining = MqttStatusCountdownRemaining;
+
+    //   Serial.print("TX MQTT: ");
+    //   Serial.print(topic);
+    //   Serial.print(" ");
+    //   Serial.println(buffer);
+    // }
   }
 #endif
 }
@@ -647,7 +663,7 @@ void callback(char *topic, byte *payload, unsigned int length)
       if (strcmp(command[1], "start") == 0) {
           uint32_t duration = atoi(message);
           if (duration > 0) {  // Only start if we have a valid duration
-              MqttCommandCountdownDuration = duration;
+              MqttCommandCountdownDuration = duration * 60;   // Convert from minutes to seconds
               MqttCommandCountdownStart = true;
               MqttCommandCountdownStartReceived = true;
               Serial.print("Starting countdown with duration: ");
@@ -1028,15 +1044,35 @@ void MqttReportDiscovery()
   discovery["device"]["connections"][0][1] = WiFi.macAddress();
   discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown");
   discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Countdown Control";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
-  discovery["schema"] = "json";
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
+//   discovery["entity_category"] = "config";
+//   discovery["name"] = "Countdown Control";
+//   discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
+//   discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
+//   discovery["schema"] = "json";
+//   discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
 
+//   size_t countdown_n = serializeJson(discovery, json_buffer);
+//   const char *countdown_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown/switch/config");
+//   MQTTclient.publish(countdown_topic, json_buffer, true);
+//   delay(120);
+//   Serial.print("TX MQTT: ");
+//   Serial.print(countdown_topic);
+//   Serial.print(" ");
+//   Serial.println(json_buffer);
+//   discovery.clear();
+  discovery["entity_category"] = "config";
+  discovery["name"] = "Countdown";
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
+  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
+  discovery["command_template"] = "{\"state\":{{value}}}";
+  discovery["step"] = 1;
+  discovery["min"] = 0;
+  discovery["max"] = 60;
+  discovery["mode"] = "slider";
+  discovery["value_template"] = "{{ value_json.state }}";
   size_t countdown_n = serializeJson(discovery, json_buffer);
-  const char *countdown_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown/switch/config");
+  const char *countdown_topic = concat3("homeassistant/number/", MQTT_CLIENT, "_countdown/number/config");
   MQTTclient.publish(countdown_topic, json_buffer, true);
   delay(120);
   Serial.print("TX MQTT: ");
@@ -1044,6 +1080,7 @@ void MqttReportDiscovery()
   Serial.print(" ");
   Serial.println(json_buffer);
   discovery.clear();
+
 #endif
 }
 
