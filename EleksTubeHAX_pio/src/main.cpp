@@ -63,6 +63,7 @@ enum Mode {
 Mode currentMode = CLOCK; // Default mode
 
 // Helper function, defined below.
+void updateDisplay(TFTs::show_t show);
 void updateClockDisplay(TFTs::show_t show = TFTs::yes);
 void updateCountdownDisplay(TFTs::show_t show);
 void updateSensorDisplay(TFTs::show_t show);
@@ -200,7 +201,7 @@ void setup()
   // Start up the clock displays.
   tfts.fillScreen(TFT_BLACK);
   uclock.loop();
-  updateClockDisplay(TFTs::force); // Draw all the clock digits
+  updateDisplay(TFTs::force); // Draw all the clock digits
   Serial.println("Setup finished.");
 }
 
@@ -244,7 +245,7 @@ void loop()
       if (!tfts.isEnabled())
       {
         tfts.reinit(); // reinit (original EleksTube HW: after a few hours in OFF state the displays do not wake up properly)
-        updateClockDisplay(TFTs::force);
+        updateDisplay(TFTs::force);
       }
 #endif
       tfts.enableAllDisplays();
@@ -266,7 +267,7 @@ void loop()
       if (!tfts.isEnabled())
       {
         tfts.reinit(); // reinit (original EleksTube HW: after a few hours in OFF state the displays do not wake up properly)
-        updateClockDisplay(TFTs::force);
+        updateDisplay(TFTs::force);
       }
 #endif
       tfts.enableAllDisplays();
@@ -309,7 +310,7 @@ void loop()
     Serial.println(idx);
     uclock.setClockGraphicsIdx(idx);
     tfts.current_graphic = uclock.getActiveGraphicIdx();
-    updateClockDisplay(TFTs::force); // redraw everything
+    updateDisplay(TFTs::force); // redraw everything
   }
 
   if (MqttCommandMainBrightnessReceived)
@@ -317,7 +318,7 @@ void loop()
     MqttCommandMainBrightnessReceived = false;
     tfts.dimming = MqttCommandMainBrightness;
     tfts.ProcessUpdatedDimming();
-    updateClockDisplay(TFTs::force);
+    updateDisplay(TFTs::force);
   }
 
   if (MqttCommandBackBrightnessReceived)
@@ -374,7 +375,7 @@ void loop()
 
     uclock.setClockGraphicsIdx(MqttCommandGraphic);
     tfts.current_graphic = uclock.getActiveGraphicIdx();
-    updateClockDisplay(TFTs::force); // redraw everything
+    updateDisplay(TFTs::force); // redraw everything
   }
 
   if (MqttCommandMainGraphicReceived)
@@ -382,7 +383,7 @@ void loop()
     MqttCommandMainGraphicReceived = false;
     uclock.setClockGraphicsIdx(MqttCommandMainGraphic);
     tfts.current_graphic = uclock.getActiveGraphicIdx();
-    updateClockDisplay(TFTs::force); // redraw everything
+    updateDisplay(TFTs::force); // redraw everything
   }
 
   if (MqttCommandUseTwelveHoursReceived)
@@ -450,17 +451,13 @@ void loop()
   if (MqttCommandTemperatureReceived) {
     MqttCommandTemperatureReceived = false;
     // Handle the received temperature value
-    Serial.print("Received Temperature: ");
-    Serial.println(MqttCommandTemperature);
-    updateClockDisplay(TFTs::show_t::yes);
+    updateDisplay(TFTs::show_t::yes);
   }
 
   if (MqttCommandHumidityReceived) {
     MqttCommandHumidityReceived = false;
     // Handle the received humidity value
-    Serial.print("Received Humidity: ");
-    Serial.println(MqttCommandHumidity);
-    updateClockDisplay(TFTs::show_t::yes);
+    updateDisplay(TFTs::show_t::yes);
   }
 
   MqttStatusPower = tfts.isEnabled();
@@ -526,7 +523,7 @@ void loop()
 #endif
       tfts.chip_select.setAll();
       tfts.fillScreen(TFT_BLACK);
-      updateClockDisplay(TFTs::force);
+      updateDisplay(TFTs::force);
     }
     backlights.togglePower();
   }
@@ -541,13 +538,7 @@ void loop()
 #endif
 
   // Other display updates or logic
-  if (currentMode == SENSOR_DISPLAY) {
-    updateSensorDisplay(TFTs::show_t::yes);
-  } else if (currentMode == COUNTDOWN) {
-    updateCountdownDisplay(TFTs::show_t::yes);
-  } else {
-    updateClockDisplay(TFTs::show_t::yes);
-  }
+  updateDisplay(TFTs::show_t::yes);
 
   UpdateDstEveryNight();
 
@@ -560,7 +551,7 @@ void loop()
     if (menu_state == Menu::idle)
     {
       // We just changed into idle, so force a redraw of all clock digits and save the config.
-      updateClockDisplay(TFTs::force); // redraw all the clock digits
+      updateDisplay(TFTs::force); // redraw all the clock digits
       Serial.println();
       Serial.print("Saving config! Triggered from leaving menu...");
       stored_config.save();
@@ -748,7 +739,7 @@ void loop()
           if (tfts.current_graphic != uclock.getActiveGraphicIdx())
           {
             tfts.current_graphic = uclock.getActiveGraphicIdx();
-            updateClockDisplay(TFTs::force); // redraw all the clock digits
+            updateDisplay(TFTs::force); // redraw all the clock digits
           }
         }
         setupMenu();
@@ -998,7 +989,7 @@ void checkDimmingNeeded()
       tfts.ProcessUpdatedDimming();
       backlights.setDimming(false);
     }
-    updateClockDisplay(TFTs::force); // redraw all the clock digits -> software dimming will be done here
+    updateDisplay(TFTs::force); // redraw all the clock digits -> software dimming will be done here
     hour_old = current_hour;
   }
 }
@@ -1089,4 +1080,14 @@ void updateSensorDisplay(TFTs::show_t show) {
 
     // Display "%" image on display #0
     tfts.setDigit(SECONDS_ONES, 0, show, true); // Assuming 0 is the index for "%" image
+}
+
+void updateDisplay(TFTs::show_t show) {
+    if (currentMode == SENSOR_DISPLAY) {
+        updateSensorDisplay(show);
+    } else if (currentMode == COUNTDOWN) {
+        updateCountdownDisplay(show);
+    } else {
+        updateClockDisplay(show);
+    }
 }
