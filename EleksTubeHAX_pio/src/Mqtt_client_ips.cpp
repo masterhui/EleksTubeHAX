@@ -159,6 +159,14 @@ bool MqttStatusCountdownMode = false;
 bool MqttStatusCountdownRunning = false;
 uint32_t MqttStatusCountdownRemaining = 0;
 
+float MqttCommandTemperature = 0.0;
+bool MqttCommandTemperatureReceived = false;
+float MqttCommandHumidity = 0.0;
+bool MqttCommandHumidityReceived = false;
+
+bool MqttCommandModeReceived = false;
+char MqttCommandMode[20] = ""; // Initialize with an empty string
+
 double round1(double value)
 {
   return (int)(value * 10 + 0.5) / 10.0;
@@ -452,6 +460,18 @@ void MqttStart()
     
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/countdown/toggle", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
+
+    // Subscribe to the temperature status topic
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/temperature", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+
+    // Subscribe to the humidity status topic
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/humidity", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+
+    // Subscribe to mode changes
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/mode/set", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
 #endif
   }
 #endif
@@ -503,7 +523,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   strncpy(message, (char *)payload, length);
   message[length] = '\0';
 
-  if (commandNumber < 2)
+  if (commandNumber < 1)
   {
     Serial.println("Detected number of commands in MQTT message is lower then 2! -> Ignoring message because it is not valid!");
     return;
@@ -514,6 +534,14 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.print(topic);
   Serial.print(" ");
   Serial.println(message);
+
+  Serial.print("command[0]: ");
+  Serial.print(" ");
+  Serial.println(command[0]);
+
+  Serial.print("command[1]: ");
+  Serial.print(" ");
+  Serial.println(command[1]);
 
 #ifndef MQTT_HOME_ASSISTANT
   //------------------Decide what to do depending on the topic and message---------------------------------
@@ -678,6 +706,26 @@ void callback(char *topic, byte *payload, unsigned int length)
           MqttCommandCountdownToggle = true;
           MqttCommandCountdownToggleReceived = true;
       }
+  }
+
+  if (strcmp(command[0], "temperature") == 0) {
+      float temperature = atof(message);
+      // Store the temperature value for display
+      MqttCommandTemperature = temperature;
+      MqttCommandTemperatureReceived = true;
+  } else if (strcmp(command[0], "humidity") == 0) {
+      float humidity = atof(message);
+      // Store the humidity value for display
+      MqttCommandHumidity = humidity;
+      MqttCommandHumidityReceived = true;
+  }
+
+
+  // Mode handling
+  if (strcmp(command[0], "mode") == 0 && strcmp(command[1], "set") == 0) {
+      strncpy(MqttCommandMode, message, sizeof(MqttCommandMode) - 1);
+      MqttCommandMode[sizeof(MqttCommandMode) - 1] = '\0'; // Ensure null-termination
+      MqttCommandModeReceived = true;
   }
 #endif
 }

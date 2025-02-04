@@ -54,9 +54,19 @@ unsigned long countdownFinishTime = 0;
 bool countdownFinished = false;
 bool countdownHandled = false;
 
+enum Mode {
+    CLOCK,
+    COUNTDOWN,
+    SENSOR_DISPLAY
+};
+
+Mode currentMode = CLOCK; // Default mode
+
 // Helper function, defined below.
 void updateClockDisplay(TFTs::show_t show = TFTs::yes);
 void updateCountdownDisplay(TFTs::show_t show);
+void updateSensorDisplay(TFTs::show_t show);
+
 void setupMenu(void);
 #ifdef DIMMING
 bool isNightTime(uint8_t current_hour);
@@ -222,7 +232,8 @@ void loop()
       MqttCommandRainbowSecReceived ||
       MqttCommandCountdownStartReceived ||
       MqttCommandCountdownStopReceived ||
-      MqttCommandCountdownToggleReceived;
+      MqttCommandCountdownToggleReceived ||
+      MqttCommandModeReceived;
 
   if (MqttCommandPowerReceived)
   {
@@ -425,6 +436,33 @@ void loop()
     tfts.enableAllDisplays(); // Turn on all 6 displays
   }
 
+  if (MqttCommandModeReceived) {
+    if (strcmp(MqttCommandMode, "clock") == 0) {
+        currentMode = CLOCK;
+    } else if (strcmp(MqttCommandMode, "countdown") == 0) {
+        currentMode = COUNTDOWN;
+    } else if (strcmp(MqttCommandMode, "sensor_display") == 0) {
+        currentMode = SENSOR_DISPLAY;
+    }
+    MqttCommandModeReceived = false;
+  }
+
+  if (MqttCommandTemperatureReceived) {
+    MqttCommandTemperatureReceived = false;
+    // Handle the received temperature value
+    Serial.print("Received Temperature: ");
+    Serial.println(MqttCommandTemperature);
+    updateClockDisplay(TFTs::show_t::yes);
+  }
+
+  if (MqttCommandHumidityReceived) {
+    MqttCommandHumidityReceived = false;
+    // Handle the received humidity value
+    Serial.print("Received Humidity: ");
+    Serial.println(MqttCommandHumidity);
+    updateClockDisplay(TFTs::show_t::yes);
+  }
+
   MqttStatusPower = tfts.isEnabled();
   MqttStatusMainPower = tfts.isEnabled();
   MqttStatusBackPower = backlights.getPower();
@@ -502,13 +540,12 @@ void loop()
   checkDimmingNeeded(); // night or day time brightness change
 #endif
 
-  // Check if the countdown mode is active
-  if (uclock.isCountdownMode()) {
-    updateCountdownDisplay(TFTs::show_t::yes);
-  }
-
   // Other display updates or logic
-  if (!uclock.isCountdownMode()) {
+  if (currentMode == SENSOR_DISPLAY) {
+    updateSensorDisplay(TFTs::show_t::yes);
+  } else if (currentMode == COUNTDOWN) {
+    updateCountdownDisplay(TFTs::show_t::yes);
+  } else {
     updateClockDisplay(TFTs::show_t::yes);
   }
 
@@ -983,19 +1020,6 @@ void UpdateDstEveryNight()
 
 void updateClockDisplay(TFTs::show_t show)
 {
-    // Don't update clock display if we're in countdown mode
-    if (uclock.isCountdownMode()) {
-        // Update countdown display
-        tfts.setDigit(HOURS_TENS, uclock.getCountdownHoursTens(), show);
-        tfts.setDigit(HOURS_ONES, uclock.getCountdownHoursOnes(), show);
-        tfts.setDigit(MINUTES_TENS, uclock.getCountdownMinutesTens(), show);
-        tfts.setDigit(MINUTES_ONES, uclock.getCountdownMinutesOnes(), show);
-        tfts.setDigit(SECONDS_TENS, uclock.getCountdownSecondsTens(), show);
-        tfts.setDigit(SECONDS_ONES, uclock.getCountdownSecondsOnes(), show);
-        return;
-    }
-
-    // Original clock display code follows...
     // refresh starting on seconds
     tfts.setDigit(SECONDS_ONES, uclock.getSecondsOnes(), show);
     tfts.setDigit(SECONDS_TENS, uclock.getSecondsTens(), show);
@@ -1047,4 +1071,22 @@ void updateCountdownDisplay(TFTs::show_t show) {
         tfts.setDigit(SECONDS_TENS, uclock.getCountdownSecondsTens(), show);
         tfts.setDigit(SECONDS_ONES, uclock.getCountdownSecondsOnes(), show);
     }
+}
+
+void updateSensorDisplay(TFTs::show_t show) {
+    // Display temperature as two integer digits on displays #5 and #4
+    int temperature = static_cast<int>(MqttCommandTemperature);
+    tfts.setDigit(HOURS_TENS, temperature / 10, show); // Display #5
+    tfts.setDigit(HOURS_ONES, temperature % 10, show); // Display #4
+
+    // Display "°C" image on display #3
+    tfts.setDigit(MINUTES_TENS, 0, show, true); // Assuming 0 is the index for "°C" image
+
+    // Display humidity as two integer digits on displays #2 and #1
+    int humidity = static_cast<int>(MqttCommandHumidity);
+    tfts.setDigit(MINUTES_ONES, humidity / 10, show); // Display #2
+    tfts.setDigit(SECONDS_TENS, humidity % 10, show); // Display #1
+
+    // Display "%" image on display #0
+    tfts.setDigit(SECONDS_ONES, 0, show, true); // Assuming 0 is the index for "%" image
 }

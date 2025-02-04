@@ -47,6 +47,12 @@ extern bool MqttCommandCountdownStop;
 extern bool MqttCommandCountdownStopReceived;
 extern bool MqttCommandCountdownToggle;
 extern bool MqttCommandCountdownToggleReceived;
+extern float MqttCommandTemperature;
+extern bool MqttCommandTemperatureReceived;
+extern float MqttCommandHumidity;
+extern bool MqttCommandHumidityReceived;
+extern bool MqttCommandModeReceived;
+extern char MqttCommandMode[20]; // Assuming a maximum length of 20 for the mode string
 
 // status to server
 extern bool MqttStatusPower;
