@@ -511,10 +511,10 @@ void checkMqtt()
 
 void callback(char *topic, byte *payload, unsigned int length)
 { // A new message has been received
-//#ifdef DEBUG_OUTPUT
+#ifdef DEBUG_OUTPUT
   Serial.print("Received MQTT topic: ");
   Serial.print(topic); // long output
-//#endif
+#endif
   int commandNumber = 10;
   char *command[commandNumber];
   commandNumber = splitCommand(topic, command, commandNumber);
@@ -528,7 +528,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     Serial.println("Detected number of commands in MQTT message is lower then 2! -> Ignoring message because it is not valid!");
     return;
   }
-//#ifdef DEBUG_OUTPUT
+#ifdef DEBUG_OUTPUT
   Serial.println();
   Serial.print("RX MQTT: ");
   Serial.print(topic);
@@ -540,7 +540,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.print("command[1]: ");
   Serial.print(" ");
   Serial.println(command[1]);
-//#endif
+#endif
 
 #ifndef MQTT_HOME_ASSISTANT
   //------------------Decide what to do depending on the topic and message---------------------------------

@@ -421,6 +421,7 @@ void loop()
     MqttCommandCountdownStartReceived = false;
     uclock.startCountdown(MqttCommandCountdownDuration);
     countdownHandled = false; // Reset the flag
+    currentMode = COUNTDOWN;
     tfts.enableAllDisplays(); // Turn on all 6 displays
   }
   if (MqttCommandCountdownStopReceived)
@@ -453,13 +454,13 @@ void loop()
   if (MqttCommandTemperatureReceived) {
     MqttCommandTemperatureReceived = false;
     // Handle the received temperature value
-    updateDisplay(TFTs::show_t::yes);
+    //updateDisplay(TFTs::show_t::yes);
   }
 
   if (MqttCommandHumidityReceived) {
     MqttCommandHumidityReceived = false;
     // Handle the received humidity value
-    updateDisplay(TFTs::show_t::yes);
+    //updateDisplay(TFTs::show_t::yes);
   }
 
   MqttStatusPower = tfts.isEnabled();
@@ -1079,7 +1080,12 @@ void updateCountdownDisplay(TFTs::show_t show) {
 void updateSensorDisplay(TFTs::show_t show) {
     // Display temperature as two integer digits on displays #5 and #4
     int temperature = static_cast<int>(MqttCommandTemperature);
-    tfts.setDigit(HOURS_TENS, temperature / 10, show); // Display #5
+    int temperatureTens = temperature / 10;
+    if (temperatureTens == 0) {
+        tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes); // Blank the display if the tens digit is 0
+    } else {
+        tfts.setDigit(HOURS_TENS, temperatureTens, show); // Display #5
+    }
     tfts.setDigit(HOURS_ONES, temperature % 10, show); // Display #4
 
     // Display "°C" image on display #3
@@ -1087,7 +1093,12 @@ void updateSensorDisplay(TFTs::show_t show) {
 
     // Display humidity as two integer digits on displays #2 and #1
     int humidity = static_cast<int>(MqttCommandHumidity);
-    tfts.setDigit(MINUTES_ONES, humidity / 10, show); // Display #2
+    int humidityTens = humidity / 10;
+    if (humidityTens == 0) {
+        tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes); // Blank the display if the tens digit is 0
+    } else {
+        tfts.setDigit(MINUTES_ONES, humidityTens, show); // Display #2
+    }
     tfts.setDigit(SECONDS_TENS, humidity % 10, show); // Display #1
 
     // Display "%" image on display #0
