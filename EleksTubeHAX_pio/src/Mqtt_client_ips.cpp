@@ -128,6 +128,7 @@ uint8_t MqttStatusMainGraphic = 0;
 uint8_t MqttStatusPulseBpm = 0;
 uint8_t MqttStatusBreathBpm = 0;
 float MqttStatusRainbowSec = 0;
+bool MqttStatusAlternate = false;
 
 int LastSentSignalLevel = 999;
 int LastSentPowerState = -1;
@@ -150,8 +151,8 @@ float LastSentRainbowSec = -1;
 bool LastSentCountdownMode = false;
 bool LastSentCountdownRunning = false;
 uint32_t LastSentCountdownRemaining = 0;
+bool LastSentAlternate = false;
 
-// Add with other status variables
 bool MqttStatusCountdownRunning = false;
 uint32_t MqttStatusCountdownRemaining = 0;
 
@@ -162,6 +163,9 @@ bool MqttCommandHumidityReceived = false;
 
 bool MqttCommandModeReceived = false;
 char MqttCommandMode[20] = ""; // Initialize with an empty string
+
+bool MqttCommandAlternate = false;
+bool MqttCommandAlternateReceived = false;
 
 double round1(double value)
 {
@@ -338,6 +342,22 @@ void MqttReportState(bool force)
       Serial.println(buffer);
     }
 
+    if (force || MqttStatusAlternate != LastSentAlternate) {
+        JsonDocument state;
+        state["state"] = MqttStatusAlternate ? MQTT_STATE_ON : MQTT_STATE_OFF;
+
+        char buffer[256];
+        size_t n = serializeJson(state, buffer);
+        const char *topic = concat2(MQTT_CLIENT, "/alternate");
+        MQTTclient.publish(topic, buffer, true);
+        LastSentAlternate = MqttStatusAlternate;
+
+        Serial.print("TX MQTT: ");
+        Serial.print(topic);
+        Serial.print(" ");
+        Serial.println(buffer);
+    }
+
   }
 #endif
 }
@@ -430,6 +450,9 @@ void MqttStart()
 
     // Subscribe to mode changes
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/mode/set", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/alternate/set", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
 #endif
   }
@@ -680,6 +703,17 @@ void callback(char *topic, byte *payload, unsigned int length)
       strncpy(MqttCommandMode, message, sizeof(MqttCommandMode) - 1);
       MqttCommandMode[sizeof(MqttCommandMode) - 1] = '\0'; // Ensure null-termination
       MqttCommandModeReceived = true;
+  }
+
+  if (strcmp(command[0], "alternate") == 0 && strcmp(command[1], "set") == 0) {
+      JsonDocument doc;
+      deserializeJson(doc, payload, length);
+
+      if (doc["state"].is<const char *>()) {
+          MqttCommandAlternate = strcmp(doc["state"], MQTT_STATE_ON) == 0;
+          MqttCommandAlternateReceived = true;
+      }
+      doc.clear();
   }
 #endif
 }
@@ -1046,22 +1080,6 @@ void MqttReportDiscovery()
   discovery["device"]["connections"][0][1] = WiFi.macAddress();
   discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown");
   discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown");
-//   discovery["entity_category"] = "config";
-//   discovery["name"] = "Countdown Control";
-//   discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
-//   discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
-//   discovery["schema"] = "json";
-//   discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
-
-//   size_t countdown_n = serializeJson(discovery, json_buffer);
-//   const char *countdown_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown/switch/config");
-//   MQTTclient.publish(countdown_topic, json_buffer, true);
-//   delay(120);
-//   Serial.print("TX MQTT: ");
-//   Serial.print(countdown_topic);
-//   Serial.print(" ");
-//   Serial.println(json_buffer);
-//   discovery.clear();
   discovery["entity_category"] = "config";
   discovery["name"] = "Countdown";
   discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
@@ -1081,6 +1099,39 @@ void MqttReportDiscovery()
   Serial.print(countdown_topic);
   Serial.print(" ");
   Serial.println(json_buffer);
+  discovery.clear();
+
+  // Alternate mode switch
+  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
+  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
+  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
+  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
+  discovery["device"]["connections"][0][0] = "mac";
+  discovery["device"]["connections"][0][1] = WiFi.macAddress();
+  discovery["unique_id"] = concat2(MQTT_CLIENT, "_alternate");
+  discovery["object_id"] = concat2(MQTT_CLIENT, "_alternate");
+  discovery["entity_category"] = "config";
+  discovery["name"] = "Alternate Mode";
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/alternate");
+  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/alternate");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/alternate/set");
+  discovery["value_template"] = "{{ value_json.state }}";
+  discovery["state_on"] = "ON";
+  discovery["state_off"] = "OFF";
+  discovery["payload_on"] = "{\"state\":\"ON\"}";
+  discovery["payload_off"] = "{\"state\":\"OFF\"}";
+  
+  char buffer[256];
+  size_t n = serializeJson(discovery, buffer);
+  const char *alternate_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_alternate/switch/config");
+  MQTTclient.publish(alternate_topic, buffer, true);
+  delay(120);
+  Serial.print("TX MQTT: ");
+  Serial.print(alternate_topic);
+  Serial.print(" ");
+  Serial.println(buffer);
   discovery.clear();
 
 #endif

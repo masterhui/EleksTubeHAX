@@ -54,6 +54,10 @@ unsigned long countdownFinishTime = 0;
 bool countdownFinished = false;
 bool countdownHandled = false;
 
+bool alternateMode = false;
+unsigned long lastModeSwitch = 0;
+const unsigned long MODE_SWITCH_INTERVAL = 20000; // 20 seconds in milliseconds
+
 enum Mode {
     CLOCK,
     COUNTDOWN,
@@ -233,7 +237,8 @@ void loop()
       MqttCommandRainbowSecReceived ||
       MqttCommandCountdownStartReceived ||
       MqttCommandCountdownStopReceived ||
-      MqttCommandModeReceived;
+      MqttCommandModeReceived ||
+      MqttCommandAlternateReceived;
 
   if (MqttCommandPowerReceived)
   {
@@ -443,6 +448,11 @@ void loop()
     updateDisplay(TFTs::force);
   }
 
+  if (MqttCommandAlternateReceived) {
+    MqttCommandAlternateReceived = false;
+    alternateMode = MqttCommandAlternate;
+  }
+
   if (MqttCommandTemperatureReceived) {
     MqttCommandTemperatureReceived = false;
     // Handle the received temperature value
@@ -473,8 +483,9 @@ void loop()
   MqttStatusPulseBpm = backlights.getPulseRate();
   MqttStatusBreathBpm = backlights.getBreathRate();
   MqttStatusRainbowSec = backlights.getRainbowDuration();
-    MqttStatusCountdownRunning = uclock.isCountdownRunning();
+  MqttStatusCountdownRunning = uclock.isCountdownRunning();
   MqttStatusCountdownRemaining = uclock.getRemainingSeconds();
+  MqttStatusAlternate = alternateMode;
 
   if (MqttCommandReceived)
   {
@@ -532,6 +543,19 @@ void loop()
 #endif
 
   // Other display updates or logic
+  if (alternateMode) {
+    unsigned long currentTime = millis();
+    if (currentTime - lastModeSwitch >= MODE_SWITCH_INTERVAL) {
+        lastModeSwitch = currentTime;
+        if (currentMode == COUNTDOWN) {
+            currentMode = SENSOR_DISPLAY;
+        } else {
+            currentMode = COUNTDOWN;
+        }
+        updateDisplay(TFTs::force);
+    }
+  }
+
   updateDisplay(TFTs::show_t::yes);
 
   UpdateDstEveryNight();

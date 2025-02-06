@@ -51,6 +51,8 @@ extern float MqttCommandHumidity;
 extern bool MqttCommandHumidityReceived;
 extern bool MqttCommandModeReceived;
 extern char MqttCommandMode[20]; // Assuming a maximum length of 20 for the mode string
+extern bool MqttCommandAlternate;
+extern bool MqttCommandAlternateReceived;
 
 // status to server
 extern bool MqttStatusPower;
@@ -71,6 +73,7 @@ extern bool MqttStatusBlankZeroHours;
 extern uint8_t MqttStatusPulseBpm;
 extern uint8_t MqttStatusBreathBpm;
 extern float MqttStatusRainbowSec;
+extern bool MqttStatusAlternate;
 
 // Add with other extern declarations
 extern bool MqttStatusCountdownRunning;
