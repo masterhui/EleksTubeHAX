@@ -1,7 +1,3 @@
-Nixie Tube
-Realistic Mesh Tube
-Soap Bubble Rainbow
-Modern Neon
-Dark Tube
-Flip Clock
-Nixie Thin Blue
+Hui Orange
+Hui Blue
+Hui Green
