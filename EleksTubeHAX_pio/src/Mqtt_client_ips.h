@@ -86,6 +86,7 @@ void MqttStart();
 void MqttLoopFrequently();
 void MqttLoopInFreeTime();
 void MqttReportBackEverything(bool force);
+void MqttSendCountdownFinished();
 
 // Function declaration for setting the MQTT command mode
 void setMqttCommandMode(const char* mode);

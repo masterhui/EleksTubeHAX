@@ -555,11 +555,15 @@ void loop()
         if (uclock.isCountdownRunning()) {
             // Alternate between countdown and sensor display
             if (currentMode == COUNTDOWN) {
-                currentMode = SENSOR_DISPLAY;
+                // Do not switch to SENSOR_DISPLAY in the last minute of the countdown or while Backlights::pulse is on
+                if (uclock.getRemainingSeconds() >= 60) {
+                    currentMode = SENSOR_DISPLAY;
+                }
             } else {
                 currentMode = COUNTDOWN;
             }
-        } else {
+        // Do not switch to SENSOR_DISPLAY or CLOCK while Backlights::pulse is on
+        } else if (backlights.getCurrentPattern() != Backlights::pulse){
             // Alternate between clock and sensor display
             if (currentMode == CLOCK) {
                 currentMode = SENSOR_DISPLAY;
@@ -805,6 +809,7 @@ void loop()
     }
   } // if (menu.stateChanged())
 
+  // Countdown has finished, start the background pulse effect
   if (currentMode == COUNTDOWN && !uclock.isCountdownRunning() && !countdownHandled) {
     if (backlights.getCurrentPattern() != Backlights::pulse) {
         backlights.setPattern(Backlights::pulse);
@@ -814,6 +819,9 @@ void loop()
     countdownFinished = true;
     countdownFinishTime = millis();
     countdownHandled = true;
+
+    // Send countdwon finished message via mqtt
+    MqttSendCountdownFinished();
   }
 
   // Check if the countdown has finished and if BACKLIGHT_PULSE_DURATION_MS have passed

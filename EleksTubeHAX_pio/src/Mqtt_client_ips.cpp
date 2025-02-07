@@ -1339,3 +1339,18 @@ void setMqttCommandMode(const char* mode) {
     strncpy(MqttCommandMode, mode, sizeof(MqttCommandMode) - 1);
     MqttCommandMode[sizeof(MqttCommandMode) - 1] = '\0'; // Ensure null-termination
 }
+
+void MqttSendCountdownFinished() {
+    if (MqttConnected) {
+        const char* topic = concat2(MQTT_CLIENT, "/countdown/finished");
+        const char* message = "Countdown has finished";
+        MQTTclient.publish(topic, message, true);
+        
+        Serial.print("Sent MQTT message: ");
+        Serial.print(topic);
+        Serial.print(" - ");
+        Serial.println(message);
+    } else {
+        Serial.println("MQTT not connected, cannot send countdown finished message.");
+    }
+}
