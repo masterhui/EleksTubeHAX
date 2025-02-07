@@ -39,6 +39,7 @@
 
 // ************ Backlight config *********************
 #define DEFAULT_BL_RAINBOW_DURATION_SEC 8
+#define BACKLIGHT_PULSE_DURATION_MS 60000 // Duration for backlight pulse effect after countdown
 
 // ************ Hardware definitions *********************
 

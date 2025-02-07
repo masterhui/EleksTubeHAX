@@ -843,8 +843,9 @@ void loop()
     countdownHandled = true;
   }
 
-  // Check if the countdown has finished and if 20 seconds have passed
-  if (countdownFinished && (millis() - countdownFinishTime >= 20000)) {
+  // Check if the countdown has finished and if 60 seconds have passed
+  // This is the duration how long the backlight pulse effect is kept on after the countdown has finished
+  if (countdownFinished && (millis() - countdownFinishTime >= BACKLIGHT_PULSE_DURATION_MS)) {
     // Turn off the pulse effect and set backlight to dark mode
     backlights.setPattern(Backlights::dark);
     tfts.disableAllDisplays(); // Turn off all 6 displays
