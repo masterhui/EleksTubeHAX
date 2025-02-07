@@ -430,14 +430,12 @@ void loop()
   {
     countdownHandled = false; // Reset the flag
     setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
-    tfts.enableAllDisplays(); // Turn on all 6 displays
   }
   if (MqttCommandCountdownStopReceived)
   {
     uclock.stopCountdown();
     MqttCommandCountdownStopReceived = false;
     setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
-    tfts.enableAllDisplays(); // Turn on all 6 displays
   }
 
   if (MqttCommandModeReceived) {
@@ -449,7 +447,6 @@ void loop()
         setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
     }
     MqttCommandModeReceived = false;
-    tfts.enableAllDisplays(); // Turn on all 6 displays
     updateDisplay(TFTs::force);
   }
 
@@ -847,9 +844,8 @@ void loop()
   // Check if the countdown has finished and if 60 seconds have passed
   // This is the duration how long the backlight pulse effect is kept on after the countdown has finished
   if (countdownFinished && (millis() - countdownFinishTime >= BACKLIGHT_PULSE_DURATION_MS)) {
-    // Turn off the pulse effect and set backlight to dark mode
+    // Turn off the pulse effect
     backlights.setPattern(Backlights::dark);
-    tfts.disableAllDisplays(); // Turn off all 6 displays
     countdownFinished = false; // Reset the flag
   }
 
