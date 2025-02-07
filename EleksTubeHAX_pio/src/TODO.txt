@@ -1,0 +1,8 @@
+✓ By default switch to sensor display (instead of clock mode)
+- Read sauna status messages. Turn display color orange/blue accordingly
+- read sensor status messages. Blank display on stale data
+- When the countdown is up, do not blank the displays after 20s. Also, Keep flashing red lights until timer is ended manually.
+- Speak time is up message via Alexa
+- Alternate modus per Sprachsteuerung konfigurieren
+- IPSCLOCK_CMD Kommandos in HomeAssistant discovery integrieren
+    - Thinks in OpenHab aktualisieren

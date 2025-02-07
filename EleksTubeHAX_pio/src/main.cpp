@@ -64,7 +64,7 @@ enum Mode {
     SENSOR_DISPLAY
 };
 
-Mode currentMode = CLOCK; // Default mode
+Mode currentMode = SENSOR_DISPLAY; // Default mode
 
 // Helper function, defined below.
 void updateDisplay(TFTs::show_t show);
