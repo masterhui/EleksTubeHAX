@@ -71,6 +71,8 @@ void updateDisplay(TFTs::show_t show);
 void updateClockDisplay(TFTs::show_t show = TFTs::yes);
 void updateCountdownDisplay(TFTs::show_t show);
 void updateSensorDisplay(TFTs::show_t show);
+void setCurrentMode(Mode newMode);
+const char* modeToString(Mode mode);
 
 void setupMenu(void);
 #ifdef DIMMING
@@ -426,26 +428,25 @@ void loop()
 
   if (MqttCommandCountdownStartReceived)
   {
-    MqttCommandCountdownStartReceived = false;
-    uclock.startCountdown(MqttCommandCountdownDuration);
     countdownHandled = false; // Reset the flag
-    currentMode = COUNTDOWN;
+    setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
     tfts.enableAllDisplays(); // Turn on all 6 displays
   }
   if (MqttCommandCountdownStopReceived)
   {
     uclock.stopCountdown();
     MqttCommandCountdownStopReceived = false;
+    setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
     tfts.enableAllDisplays(); // Turn on all 6 displays
   }
 
   if (MqttCommandModeReceived) {
     if (strcmp(MqttCommandMode, "clock") == 0) {
-        currentMode = CLOCK;
+        setCurrentMode(CLOCK); // Use setter instead of direct assignment
     } else if (strcmp(MqttCommandMode, "countdown") == 0) {
-        currentMode = COUNTDOWN;
+        setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
     } else if (strcmp(MqttCommandMode, "sensor_display") == 0) {
-        currentMode = SENSOR_DISPLAY;
+        setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
     }
     MqttCommandModeReceived = false;
     tfts.enableAllDisplays(); // Turn on all 6 displays
@@ -569,16 +570,16 @@ void loop()
         if (uclock.isCountdownRunning()) {
             // Alternate between countdown and sensor display
             if (currentMode == COUNTDOWN) {
-                currentMode = SENSOR_DISPLAY;
+                setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
             } else {
-                currentMode = COUNTDOWN;
+                setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
             }
         } else {
             // Alternate between clock and sensor display
             if (currentMode == CLOCK) {
-                currentMode = SENSOR_DISPLAY;
+                setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
             } else {
-                currentMode = CLOCK;
+                setCurrentMode(CLOCK); // Use setter instead of direct assignment
             }
         }
 
@@ -1161,4 +1162,18 @@ void updateSensorDisplay(TFTs::show_t show) {
 
     // Display "%" image on display #0
     tfts.setDigit(SECONDS_ONES, 0, show, TFTs::PERCENT);
+}
+
+void setCurrentMode(Mode newMode) {
+    currentMode = newMode;
+    setMqttCommandMode(modeToString(newMode)); // Convert the mode to string and set it
+}
+
+const char* modeToString(Mode mode) {
+    switch (mode) {
+        case CLOCK: return "clock";
+        case COUNTDOWN: return "countdown";
+        case SENSOR_DISPLAY: return "sensor_display";
+        default: return "unknown";
+    }
 }

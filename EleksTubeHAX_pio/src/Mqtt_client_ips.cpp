@@ -1333,3 +1333,8 @@ void MqttPeriodicReportBack()
     MqttReportBackEverything(true);
   }
 }
+
+void setMqttCommandMode(const char* mode) {
+    strncpy(MqttCommandMode, mode, sizeof(MqttCommandMode) - 1);
+    MqttCommandMode[sizeof(MqttCommandMode) - 1] = '\0'; // Ensure null-termination
+}
