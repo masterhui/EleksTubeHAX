@@ -167,6 +167,9 @@ char MqttCommandMode[20] = ""; // Initialize with an empty string
 bool MqttCommandAlternate = false;
 bool MqttCommandAlternateReceived = false;
 
+bool MqttCommandSaunaPowerReceived = false;
+bool MqttCommandSaunaPower = false;
+
 double round1(double value)
 {
   return (int)(value * 10 + 0.5) / 10.0;
@@ -454,6 +457,9 @@ void MqttStart()
 
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/alternate/set", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
+
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/power_status", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
 #endif
   }
 #endif
@@ -714,6 +720,11 @@ void callback(char *topic, byte *payload, unsigned int length)
           MqttCommandAlternateReceived = true;
       }
       doc.clear();
+  }
+
+  if (strcmp(topic, "saunaBox/power_status") == 0) {
+      MqttCommandSaunaPower = strcmp(message, "ON") == 0;
+      MqttCommandSaunaPowerReceived = true;
   }
 #endif
 }

@@ -74,10 +74,10 @@ extern uint8_t MqttStatusPulseBpm;
 extern uint8_t MqttStatusBreathBpm;
 extern float MqttStatusRainbowSec;
 extern bool MqttStatusAlternate;
-
-// Add with other extern declarations
 extern bool MqttStatusCountdownRunning;
 extern uint32_t MqttStatusCountdownRemaining;
+extern bool MqttCommandSaunaPowerReceived;
+extern bool MqttCommandSaunaPower;
 
 // functions
 void MqttStart();

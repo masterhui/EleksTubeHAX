@@ -238,7 +238,8 @@ void loop()
       MqttCommandCountdownStartReceived ||
       MqttCommandCountdownStopReceived ||
       MqttCommandModeReceived ||
-      MqttCommandAlternateReceived;
+      MqttCommandAlternateReceived ||
+      MqttCommandSaunaPowerReceived;
 
   if (MqttCommandPowerReceived)
   {
@@ -463,6 +464,19 @@ void loop()
     MqttCommandHumidityReceived = false;
     // Handle the received humidity value
     //updateDisplay(TFTs::show_t::yes);
+  }
+
+  if (MqttCommandSaunaPowerReceived) {
+    MqttCommandSaunaPowerReceived = false;
+    if (MqttCommandSaunaPower) {
+        // Sauna is ON - set orange effect
+        uclock.setClockGraphicsIdx(tfts.nameToClockFace("Hui Orange"));
+    } else {
+        // Sauna is OFF - set blue effect
+        uclock.setClockGraphicsIdx(tfts.nameToClockFace("Hui Blue"));
+    }
+    tfts.current_graphic = uclock.getActiveGraphicIdx();
+    updateDisplay(TFTs::force);
   }
 
   MqttStatusPower = tfts.isEnabled();
