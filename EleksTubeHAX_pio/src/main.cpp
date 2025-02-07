@@ -429,22 +429,21 @@ void loop()
   if (MqttCommandCountdownStartReceived)
   {
     countdownHandled = false; // Reset the flag
-    setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
+    setCurrentMode(COUNTDOWN);
   }
   if (MqttCommandCountdownStopReceived)
   {
     uclock.stopCountdown();
     MqttCommandCountdownStopReceived = false;
-    setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
   }
 
   if (MqttCommandModeReceived) {
     if (strcmp(MqttCommandMode, "clock") == 0) {
-        setCurrentMode(CLOCK); // Use setter instead of direct assignment
+        setCurrentMode(CLOCK);
     } else if (strcmp(MqttCommandMode, "countdown") == 0) {
-        setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
+        setCurrentMode(COUNTDOWN);
     } else if (strcmp(MqttCommandMode, "sensor_display") == 0) {
-        setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
+        setCurrentMode(SENSOR_DISPLAY);
     }
     MqttCommandModeReceived = false;
     updateDisplay(TFTs::force);
@@ -567,16 +566,16 @@ void loop()
         if (uclock.isCountdownRunning()) {
             // Alternate between countdown and sensor display
             if (currentMode == COUNTDOWN) {
-                setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
+                setCurrentMode(SENSOR_DISPLAY);
             } else {
-                setCurrentMode(COUNTDOWN); // Use setter instead of direct assignment
+                setCurrentMode(COUNTDOWN);
             }
         } else {
             // Alternate between clock and sensor display
             if (currentMode == CLOCK) {
-                setCurrentMode(SENSOR_DISPLAY); // Use setter instead of direct assignment
+                setCurrentMode(SENSOR_DISPLAY);
             } else {
-                setCurrentMode(CLOCK); // Use setter instead of direct assignment
+                setCurrentMode(CLOCK);
             }
         }
 
