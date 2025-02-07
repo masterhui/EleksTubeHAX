@@ -105,6 +105,8 @@ public:
   const uint16_t max_phase = 768;  // 256 up, 256 down, 256 off
   const uint8_t max_intensity = 8; // 0 to 7
 
+  patterns getCurrentPattern() { return getPattern(); }
+
 private:
   bool dimming = false;
   bool pattern_needs_init;

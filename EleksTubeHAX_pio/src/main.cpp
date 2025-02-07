@@ -806,22 +806,9 @@ void loop()
   } // if (menu.stateChanged())
 
   if (currentMode == COUNTDOWN && !uclock.isCountdownRunning() && !countdownHandled) {
-    // Countdown has finished - flash all displays
-    static uint32_t last_flash = 0;
-    static bool flash_state = false;
-    
-    if (millis() - last_flash > 500) {  // Flash every 500ms
-      last_flash = millis();
-      flash_state = !flash_state;
-      
-      TFTs::show_t show = flash_state ? TFTs::show_t::yes : TFTs::show_t::no;
-      for (int i = 0; i < 6; i++) {
-        tfts.setDigit(i, 0, show);
-      }
+    if (backlights.getCurrentPattern() != Backlights::pulse) {
+        backlights.setPattern(Backlights::pulse);
     }
-
-    // Call the pulsePattern method to set the backlight effect
-    backlights.setPattern(Backlights::pulse);
 
     // Set the countdown finished flag and record the finish time
     countdownFinished = true;
@@ -829,7 +816,7 @@ void loop()
     countdownHandled = true;
   }
 
-  // Check if the countdown has finished and if 60 seconds have passed
+  // Check if the countdown has finished and if BACKLIGHT_PULSE_DURATION_MS have passed
   // This is the duration how long the backlight pulse effect is kept on after the countdown has finished
   if (countdownFinished && (millis() - countdownFinishTime >= BACKLIGHT_PULSE_DURATION_MS)) {
     // Turn off the pulse effect
