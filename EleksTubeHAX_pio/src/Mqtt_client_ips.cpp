@@ -152,6 +152,7 @@ bool LastSentCountdownMode = false;
 bool LastSentCountdownRunning = false;
 uint32_t LastSentCountdownRemaining = 0;
 bool LastSentAlternate = false;
+char LastSentMode[20] = ""; // Add this line to declare the variable
 
 bool MqttStatusCountdownRunning = false;
 uint32_t MqttStatusCountdownRemaining = 0;
@@ -365,6 +366,62 @@ void MqttReportState(bool force)
         Serial.println(buffer);
     }
 
+    // Status reporting for countdown commands
+    if (force || MqttStatusCountdownRunning != LastSentCountdownRunning)
+    {
+      JsonDocument state;
+      state["state"] = MqttStatusCountdownRunning ? MQTT_STATE_ON : MQTT_STATE_OFF;
+
+      char buffer[256];
+      size_t n = serializeJson(state, buffer);
+      const char *topic = concat2(MQTT_CLIENT, "/countdown");
+      MQTTclient.publish(topic, buffer, true);
+      LastSentCountdownRunning = MqttStatusCountdownRunning;
+
+      Serial.print("TX MQTT: ");
+      Serial.print(topic);
+      Serial.print(" ");
+      Serial.println(buffer);
+    }
+
+    // Report remaining countdown time
+    if (force || abs(static_cast<int>(MqttStatusCountdownRemaining) - static_cast<int>(LastSentCountdownRemaining)) >= 10)   // Only report change if difference is at least 10
+    {
+        JsonDocument countdownState;
+        countdownState["remaining_time"] = MqttStatusCountdownRemaining; // Assuming this is in seconds
+
+        char countdownBuffer[256];
+        size_t countdownN = serializeJson(countdownState, countdownBuffer);
+        const char *countdownTopic = concat2(MQTT_CLIENT, "/countdown/remaining");
+        MQTTclient.publish(countdownTopic, countdownBuffer, true);
+        LastSentCountdownRemaining = MqttStatusCountdownRemaining; // Update LastSentCountdownRemaining
+
+        Serial.print("TX MQTT: ");
+        Serial.print(countdownTopic);
+        Serial.print(" ");
+        Serial.println(countdownBuffer);
+    }
+
+    // Status reporting for mode
+    if (force || strcmp(MqttCommandMode, LastSentMode) != 0)
+    {
+      JsonDocument state;
+      state["state"] = MqttCommandMode;
+
+      char buffer[256];
+      size_t n = serializeJson(state, buffer);
+      const char *topic = concat2(MQTT_CLIENT, "/mode");
+      MQTTclient.publish(topic, buffer, true);
+
+      // Update LastSentMode only if it has changed
+      strncpy(LastSentMode, MqttCommandMode, sizeof(LastSentMode) - 1);
+      LastSentMode[sizeof(LastSentMode) - 1] = '\0'; // Ensure null-termination
+
+      Serial.print("TX MQTT: ");
+      Serial.print(topic);
+      Serial.print(" ");
+      Serial.println(buffer);
+    }
   }
 #endif
 }
