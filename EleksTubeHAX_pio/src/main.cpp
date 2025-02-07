@@ -415,8 +415,10 @@ void loop()
 
   if (MqttCommandCountdownStartReceived)
   {
+    MqttCommandCountdownStartReceived = false;
+    uclock.startCountdown(MqttCommandCountdownDuration);
     countdownHandled = false; // Reset the flag
-    setCurrentMode(COUNTDOWN);
+    currentMode = COUNTDOWN;
   }
   if (MqttCommandCountdownStopReceived)
   {
@@ -426,11 +428,11 @@ void loop()
 
   if (MqttCommandModeReceived) {
     if (strcmp(MqttCommandMode, "clock") == 0) {
-        setCurrentMode(CLOCK);
+        currentMode = CLOCK;
     } else if (strcmp(MqttCommandMode, "countdown") == 0) {
-        setCurrentMode(COUNTDOWN);
+        currentMode = COUNTDOWN;
     } else if (strcmp(MqttCommandMode, "sensor_display") == 0) {
-        setCurrentMode(SENSOR_DISPLAY);
+        currentMode = SENSOR_DISPLAY;
     }
     MqttCommandModeReceived = false;
     updateDisplay(TFTs::force);
@@ -553,16 +555,16 @@ void loop()
         if (uclock.isCountdownRunning()) {
             // Alternate between countdown and sensor display
             if (currentMode == COUNTDOWN) {
-                setCurrentMode(SENSOR_DISPLAY);
+                currentMode = SENSOR_DISPLAY;
             } else {
-                setCurrentMode(COUNTDOWN);
+                currentMode = COUNTDOWN;
             }
         } else {
             // Alternate between clock and sensor display
             if (currentMode == CLOCK) {
-                setCurrentMode(SENSOR_DISPLAY);
+                currentMode = SENSOR_DISPLAY;
             } else {
-                setCurrentMode(CLOCK);
+                currentMode = CLOCK;
             }
         }
 
@@ -1146,11 +1148,6 @@ void updateSensorDisplay(TFTs::show_t show) {
     tfts.setDigit(SECONDS_ONES, 0, show, TFTs::PERCENT);
 }
 
-void setCurrentMode(Mode newMode) {
-    currentMode = newMode;
-    //setMqttCommandMode(modeToString(newMode)); // Convert the mode to string and set it
-}
-
 const char* modeToString(Mode mode) {
     switch (mode) {
         case CLOCK: return "clock";
@@ -1159,7 +1156,6 @@ const char* modeToString(Mode mode) {
         default: return "unknown";
     }
 }
-
 Mode getCurrentMode() {
     return currentMode; // Return the current mode
 }

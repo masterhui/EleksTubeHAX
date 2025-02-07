@@ -18,6 +18,5 @@ void updateDisplay(TFTs::show_t show);
 void updateClockDisplay(TFTs::show_t show);
 void updateCountdownDisplay(TFTs::show_t show);
 void updateSensorDisplay(TFTs::show_t show);
-void setCurrentMode(Mode newMode);
 
 #endif /* MAIN_H_ */
