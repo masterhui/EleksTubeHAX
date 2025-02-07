@@ -1161,6 +1161,83 @@ void MqttReportDiscovery()
   Serial.println(buffer);
   discovery.clear();
 
+  // Countdown Start Discovery
+  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
+  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
+  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
+  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
+  discovery["device"]["connections"][0][0] = "mac";
+  discovery["device"]["connections"][0][1] = WiFi.macAddress();
+  discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown_start");
+  discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown_start");
+  discovery["name"] = "Countdown Start";
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/start");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/start/set");
+  discovery["payload_on"] = "ON";
+  discovery["payload_off"] = "OFF";
+  size_t countdown_start_n = serializeJson(discovery, json_buffer);
+  const char *countdown_start_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown_start/switch/config");
+  MQTTclient.publish(countdown_start_topic, json_buffer, true);
+  delay(120);
+  Serial.print("TX MQTT: ");
+  Serial.print(countdown_start_topic);
+  Serial.print(" ");
+  Serial.println(json_buffer);
+  discovery.clear();
+
+  // Countdown Stop Discovery
+  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
+  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
+  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
+  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
+  discovery["device"]["connections"][0][0] = "mac";
+  discovery["device"]["connections"][0][1] = WiFi.macAddress();
+  discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown_stop");
+  discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown_stop");
+  discovery["name"] = "Countdown Stop";
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/stop");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/stop/set");
+  discovery["payload_on"] = "ON";
+  discovery["payload_off"] = "OFF";
+  size_t countdown_stop_n = serializeJson(discovery, json_buffer);
+  const char *countdown_stop_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown_stop/switch/config");
+  MQTTclient.publish(countdown_stop_topic, json_buffer, true);
+  delay(120);
+  Serial.print("TX MQTT: ");
+  Serial.print(countdown_stop_topic);
+  Serial.print(" ");
+  Serial.println(json_buffer);
+  discovery.clear();
+
+  // Mode Set Discovery
+  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
+  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
+  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
+  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
+  discovery["device"]["connections"][0][0] = "mac";
+  discovery["device"]["connections"][0][1] = WiFi.macAddress();
+  discovery["unique_id"] = concat2(MQTT_CLIENT, "_mode_set");
+  discovery["object_id"] = concat2(MQTT_CLIENT, "_mode_set");
+  discovery["name"] = "Mode Set";
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/mode/set");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/mode/set");
+  discovery["value_template"] = "{{ value_json.state }}";
+  size_t mode_set_n = serializeJson(discovery, json_buffer);
+  const char *mode_set_topic = concat3("homeassistant/select/", MQTT_CLIENT, "_mode_set/select/config");
+  MQTTclient.publish(mode_set_topic, json_buffer, true);
+  delay(120);
+  Serial.print("TX MQTT: ");
+  Serial.print(mode_set_topic);
+  Serial.print(" ");
+  Serial.println(json_buffer);
+  discovery.clear();
+
 #endif
 }
 
