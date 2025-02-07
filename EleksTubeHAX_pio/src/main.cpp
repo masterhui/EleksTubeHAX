@@ -54,7 +54,7 @@ unsigned long countdownFinishTime = 0;
 bool countdownFinished = false;
 bool countdownHandled = false;
 
-bool alternateMode = false;
+bool alternateMode = true; // Turn on alternate mode switching by default
 unsigned long lastModeSwitch = 0;
 const unsigned long MODE_SWITCH_INTERVAL = 20000; // 20 seconds in milliseconds
 
@@ -207,6 +207,9 @@ void setup()
   uclock.loop();
   updateDisplay(TFTs::force); // Draw all the clock digits
   Serial.println("Setup finished.");
+
+  // Set alternate mode to true by default
+  alternateMode = true;
 }
 
 void loop()
