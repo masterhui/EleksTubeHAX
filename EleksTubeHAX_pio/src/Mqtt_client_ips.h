@@ -78,6 +78,8 @@ extern bool MqttStatusCountdownRunning;
 extern uint32_t MqttStatusCountdownRemaining;
 extern bool MqttCommandSaunaPowerReceived;
 extern bool MqttCommandSaunaPower;
+extern bool MqttTemperatureSensorOnline;
+extern bool MqttHumiditySensorOnline;
 
 // functions
 void MqttStart();

@@ -1108,28 +1108,40 @@ void updateCountdownDisplay(TFTs::show_t show) {
 
 void updateSensorDisplay(TFTs::show_t show) {
     // Display temperature as two integer digits on displays #5 and #4
-    int temperature = static_cast<int>(MqttCommandTemperature);
-    int temperatureTens = temperature / 10;
-    if (temperatureTens == 0) {
-        tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes); // Blank the display if the tens digit is 0
+    if (MqttTemperatureSensorOnline) {
+        int temperature = static_cast<int>(MqttCommandTemperature);
+        int temperatureTens = temperature / 10;
+        if (temperatureTens == 0) {
+            tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes);
+        } else {
+            tfts.setDigit(HOURS_TENS, temperatureTens, show);
+        }
+        tfts.setDigit(HOURS_ONES, temperature % 10, show);
     } else {
-        tfts.setDigit(HOURS_TENS, temperatureTens, show); // Display #5
+        // Blank temperature displays if sensor is offline
+        tfts.setDigit(HOURS_TENS, TFTs::blanked, TFTs::show_t::yes);
+        tfts.setDigit(HOURS_ONES, TFTs::blanked, TFTs::show_t::yes);
     }
-    tfts.setDigit(HOURS_ONES, temperature % 10, show); // Display #4
 
     // Display "°C" image on display #3
-    tfts.setDigit(MINUTES_TENS, 0, show, TFTs::CELSIUS); // For Celsius
+    tfts.setDigit(MINUTES_TENS, 0, show, TFTs::CELSIUS);
 
     // Display humidity as two integer digits on displays #2 and #1
-    int humidity = static_cast<int>(MqttCommandHumidity);
-    int humidityTens = humidity / 10;
-    if (humidityTens == 0) {
-        tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes); // Blank the display if the tens digit is 0
+    if (MqttHumiditySensorOnline) {
+        int humidity = static_cast<int>(MqttCommandHumidity);
+        int humidityTens = humidity / 10;
+        if (humidityTens == 0) {
+            tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes);
+        } else {
+            tfts.setDigit(MINUTES_ONES, humidityTens, show);
+        }
+        tfts.setDigit(SECONDS_TENS, humidity % 10, show);
     } else {
-        tfts.setDigit(MINUTES_ONES, humidityTens, show); // Display #2
+        // Blank humidity displays if sensor is offline
+        tfts.setDigit(MINUTES_ONES, TFTs::blanked, TFTs::show_t::yes);
+        tfts.setDigit(SECONDS_TENS, TFTs::blanked, TFTs::show_t::yes);
     }
-    tfts.setDigit(SECONDS_TENS, humidity % 10, show); // Display #1
 
     // Display "%" image on display #0
-    tfts.setDigit(SECONDS_ONES, 0, show, TFTs::PERCENT); // For Percent
+    tfts.setDigit(SECONDS_ONES, 0, show, TFTs::PERCENT);
 }

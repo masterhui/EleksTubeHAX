@@ -170,6 +170,10 @@ bool MqttCommandAlternateReceived = false;
 bool MqttCommandSaunaPowerReceived = false;
 bool MqttCommandSaunaPower = false;
 
+// Initialize sensor status (assume online by default)
+bool MqttTemperatureSensorOnline = true;
+bool MqttHumiditySensorOnline = true;
+
 double round1(double value)
 {
   return (int)(value * 10 + 0.5) / 10.0;
@@ -460,6 +464,12 @@ void MqttStart()
 
     snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/power_status", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
+
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/temperature_status");
+    MQTTclient.subscribe(subscribeTopic);
+
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/humidity_status");
+    MQTTclient.subscribe(subscribeTopic);
 #endif
   }
 #endif
@@ -725,6 +735,12 @@ void callback(char *topic, byte *payload, unsigned int length)
   if (strcmp(topic, "saunaBox/power_status") == 0) {
       MqttCommandSaunaPower = strcmp(message, "ON") == 0;
       MqttCommandSaunaPowerReceived = true;
+  }
+
+  if (strcmp(topic, "saunaBox/temperature_status") == 0) {
+      MqttTemperatureSensorOnline = (strcmp(message, "ONLINE") == 0);
+  } else if (strcmp(topic, "saunaBox/humidity_status") == 0) {
+      MqttHumiditySensorOnline = (strcmp(message, "ONLINE") == 0);
   }
 #endif
 }
