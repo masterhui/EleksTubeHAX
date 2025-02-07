@@ -561,11 +561,24 @@ void loop()
     unsigned long currentTime = millis();
     if (currentTime - lastModeSwitch >= MODE_SWITCH_INTERVAL) {
         lastModeSwitch = currentTime;
-        if (currentMode == COUNTDOWN) {
-            currentMode = SENSOR_DISPLAY;
+
+        // Check if countdown is running
+        if (uclock.isCountdownRunning()) {
+            // Alternate between countdown and sensor display
+            if (currentMode == COUNTDOWN) {
+                currentMode = SENSOR_DISPLAY;
+            } else {
+                currentMode = COUNTDOWN;
+            }
         } else {
-            currentMode = COUNTDOWN;
+            // Alternate between clock and sensor display
+            if (currentMode == CLOCK) {
+                currentMode = SENSOR_DISPLAY;
+            } else {
+                currentMode = CLOCK;
+            }
         }
+
         updateDisplay(TFTs::force);
     }
   }
