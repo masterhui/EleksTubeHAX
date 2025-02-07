@@ -18,6 +18,7 @@
 #include "TFTs.h"
 #include "Backlights.h"
 #include "Clock.h"
+#include "main.h"
 
 #define concat2(first, second) first second
 #define concat3(first, second, third) first second third
@@ -403,10 +404,10 @@ void MqttReportState(bool force)
     }
 
     // Status reporting for mode
-    if (force || strcmp(MqttCommandMode, LastSentMode) != 0)
+    if (force || strcmp(modeToString(getCurrentMode()), LastSentMode) != 0)
     {
       JsonDocument state;
-      state["state"] = MqttCommandMode;
+      state["state"] = modeToString(getCurrentMode());
 
       char buffer[256];
       size_t n = serializeJson(state, buffer);
@@ -414,7 +415,7 @@ void MqttReportState(bool force)
       MQTTclient.publish(topic, buffer, true);
 
       // Update LastSentMode only if it has changed
-      strncpy(LastSentMode, MqttCommandMode, sizeof(LastSentMode) - 1);
+      strncpy(LastSentMode, modeToString(getCurrentMode()), sizeof(LastSentMode) - 1);
       LastSentMode[sizeof(LastSentMode) - 1] = '\0'; // Ensure null-termination
 
       Serial.print("TX MQTT: ");

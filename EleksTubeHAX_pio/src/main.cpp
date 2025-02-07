@@ -23,6 +23,7 @@
 #include <Wire.h>
 #include <SparkFun_APDS9960.h>
 #endif // NovelLife_SE Clone XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#include "main.h"
 
 // Constants
 
@@ -58,21 +59,7 @@ bool alternateMode = true; // Turn on alternate mode switching by default
 unsigned long lastModeSwitch = 0;
 const unsigned long MODE_SWITCH_INTERVAL = 20000; // 20 seconds in milliseconds
 
-enum Mode {
-    CLOCK,
-    COUNTDOWN,
-    SENSOR_DISPLAY
-};
-
 Mode currentMode = SENSOR_DISPLAY; // Default mode
-
-// Helper function, defined below.
-void updateDisplay(TFTs::show_t show);
-void updateClockDisplay(TFTs::show_t show = TFTs::yes);
-void updateCountdownDisplay(TFTs::show_t show);
-void updateSensorDisplay(TFTs::show_t show);
-void setCurrentMode(Mode newMode);
-const char* modeToString(Mode mode);
 
 void setupMenu(void);
 #ifdef DIMMING
@@ -1161,7 +1148,7 @@ void updateSensorDisplay(TFTs::show_t show) {
 
 void setCurrentMode(Mode newMode) {
     currentMode = newMode;
-    setMqttCommandMode(modeToString(newMode)); // Convert the mode to string and set it
+    //setMqttCommandMode(modeToString(newMode)); // Convert the mode to string and set it
 }
 
 const char* modeToString(Mode mode) {
@@ -1171,4 +1158,8 @@ const char* modeToString(Mode mode) {
         case SENSOR_DISPLAY: return "sensor_display";
         default: return "unknown";
     }
+}
+
+Mode getCurrentMode() {
+    return currentMode; // Return the current mode
 }

@@ -3,9 +3,8 @@
 ✓ read sensor status messages. Blank display on stale data
 ✓ When the countdown is up, do not blank the displays after 20s. Also, Keep flashing red lights until timer is ended manually.
 - Speak time is up message via Alexa
-- Alternate modus per Sprachsteuerung konfigurieren
+✓ Alternate modus per Sprachsteuerung konfigurieren
 ✓ IPSCLOCK_CMD Kommandos in HomeAssistant discovery integrieren
-    - Thinks in OpenHab aktualisieren
 ✓ Different alternate modes:
     ✓ When no countdown is running: alternate between clock and sensor_display
     ✓ When a countdown is running: alternate between countdown and sensor_display
