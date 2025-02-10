@@ -1077,7 +1077,7 @@ void updateCountdownDisplay(TFTs::show_t show) {
     }
 
     if (uclock.getRemainingSeconds() < 3600) { // Less than 1 hour
-        tfts.setDigit(HOURS_TENS, TFTs::blanked, show);
+        tfts.setDigit(HOURS_TENS, 0, show, TFTs::HOURGLASS);
 
         // Use 4 displays for mm:ss and 1 for the colon
         tfts.setDigit(HOURS_ONES, uclock.getCountdownMinutesTens(), show);

@@ -229,13 +229,16 @@ void TFTs::showDigit(uint8_t digit, SpecialSymbol symbol)
     
     switch (symbol) {
         case COLON:
-            file_index = current_graphic * 100; // Matching colon for clockface as index 100 ... 700
+            file_index = current_graphic * 100;
             break;
         case PERCENT:
-            file_index = current_graphic * 100 + 1; // Matching percent for clockface as index 101 ... 701
+            file_index = current_graphic * 100 + 1;
             break;
         case CELSIUS:
-            file_index = current_graphic * 100 + 2; // Matching celsius for clockface as index 102 ... 702
+            file_index = current_graphic * 100 + 2;
+            break;
+        case HOURGLASS:
+            file_index = current_graphic * 100 + 3;
             break;
         default:
             file_index = current_graphic * 10 + digits[digit];

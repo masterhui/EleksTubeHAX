@@ -34,7 +34,8 @@ public:
     NONE,
     COLON,
     PERCENT,
-    CELSIUS
+    CELSIUS,
+    HOURGLASS
   };
 
   // A digit of 0xFF means blank the screen.
