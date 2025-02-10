@@ -1170,14 +1170,13 @@ void MqttReportDiscovery()
   discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
   discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
   discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
-  discovery["command_template"] = "{\"state\":{{value}}}";
-  discovery["step"] = 1;
-  discovery["min"] = 0;
-  discovery["max"] = 60;
-  discovery["mode"] = "slider";
   discovery["value_template"] = "{{ value_json.state }}";
+  discovery["state_on"] = "ON";
+  discovery["state_off"] = "OFF";
+  discovery["payload_on"] = "{\"state\":\"ON\"}";
+  discovery["payload_off"] = "{\"state\":\"OFF\"}";
   size_t countdown_n = serializeJson(discovery, json_buffer);
-  const char *countdown_topic = concat3("homeassistant/number/", MQTT_CLIENT, "_countdown/number/config");
+  const char *countdown_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown/switch/config");
   MQTTclient.publish(countdown_topic, json_buffer, true);
   delay(120);
   Serial.print("TX MQTT: ");
@@ -1207,16 +1206,14 @@ void MqttReportDiscovery()
   discovery["state_off"] = "OFF";
   discovery["payload_on"] = "{\"state\":\"ON\"}";
   discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  
-  char buffer[256];
-  size_t n = serializeJson(discovery, buffer);
+  size_t n = serializeJson(discovery, json_buffer);
   const char *alternate_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_alternate/switch/config");
-  MQTTclient.publish(alternate_topic, buffer, true);
+  MQTTclient.publish(alternate_topic, json_buffer, true);
   delay(120);
   Serial.print("TX MQTT: ");
   Serial.print(alternate_topic);
   Serial.print(" ");
-  Serial.println(buffer);
+  Serial.println(json_buffer);
   discovery.clear();
 
   // Countdown Start Discovery
@@ -1233,8 +1230,11 @@ void MqttReportDiscovery()
   discovery["name"] = "Countdown Start";
   discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/start");
   discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/start/set");
-  discovery["payload_on"] = "ON";
-  discovery["payload_off"] = "OFF";
+  discovery["value_template"] = "{{ value_json.state }}";
+  discovery["state_on"] = "ON";
+  discovery["state_off"] = "OFF";
+  discovery["payload_on"] = "{\"state\":\"ON\"}";
+  discovery["payload_off"] = "{\"state\":\"OFF\"}";
   size_t countdown_start_n = serializeJson(discovery, json_buffer);
   const char *countdown_start_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown_start/switch/config");
   MQTTclient.publish(countdown_start_topic, json_buffer, true);
@@ -1256,11 +1256,16 @@ void MqttReportDiscovery()
   discovery["device"]["connections"][0][1] = WiFi.macAddress();
   discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown_stop");
   discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown_stop");
+  discovery["entity_category"] = "config";
   discovery["name"] = "Countdown Stop";
   discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/stop");
+  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown/stop");
   discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/stop/set");
-  discovery["payload_on"] = "ON";
-  discovery["payload_off"] = "OFF";
+  discovery["value_template"] = "{{ value_json.state }}";
+  discovery["state_on"] = "ON";
+  discovery["state_off"] = "OFF";
+  discovery["payload_on"] = "{\"state\":\"ON\"}";
+  discovery["payload_off"] = "{\"state\":\"OFF\"}";
   size_t countdown_stop_n = serializeJson(discovery, json_buffer);
   const char *countdown_stop_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown_stop/switch/config");
   MQTTclient.publish(countdown_stop_topic, json_buffer, true);
