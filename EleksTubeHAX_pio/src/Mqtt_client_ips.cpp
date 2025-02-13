@@ -945,10 +945,15 @@ bool discoveryReported = false;
 void MqttReportDiscovery()
 {
 #ifdef MQTT_HOME_ASSISTANT_DISCOVERY
-  char json_buffer[1024];
+  char json_buffer[2048];
   JsonDocument discovery;
 
-  // Main Light
+  // Add these common LWT settings to each discovery entity
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
+
+  // Main Light Discovery
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -981,7 +986,11 @@ void MqttReportDiscovery()
   Serial.println(json_buffer);
   discovery.clear();
 
-  // Back Light
+  // Back Light Discovery
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1015,7 +1024,11 @@ void MqttReportDiscovery()
   Serial.println(json_buffer);
   discovery.clear();
 
-  // Use Twelwe Hours
+  // Use Twelve Hours Discovery
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1046,7 +1059,11 @@ void MqttReportDiscovery()
   Serial.println(json_buffer);
   discovery.clear();
 
-  // Blank Zero Hours
+  // Blank Zero Hours Discovery
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1078,6 +1095,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Pulses per minute
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1110,6 +1131,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Breathes per minute
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1142,6 +1167,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Rainbow duration
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1174,6 +1203,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Add countdown control
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1205,6 +1238,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Alternate mode switch
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1236,6 +1273,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Countdown Start Discovery
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1265,6 +1306,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Countdown Stop Discovery
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
@@ -1296,6 +1341,10 @@ void MqttReportDiscovery()
   discovery.clear();
 
   // Mode Set Discovery
+  discovery.clear();
+  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
   discovery["device"]["identifiers"][0] = MQTT_CLIENT;
   discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
   discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
