@@ -1064,16 +1064,22 @@ void updateCountdownDisplay(TFTs::show_t show) {
     static unsigned long lastToggleTime = 0;
     unsigned long currentTime = millis();
 
-    // Calculate the time elapsed since the last toggle
-    unsigned long elapsedTime = currentTime - lastToggleTime;
+    // Only blink the colon if countdown is still running
+    if (!countdownFinished) {
+        // Calculate the time elapsed since the last toggle
+        unsigned long elapsedTime = currentTime - lastToggleTime;
 
-    // Blink pattern: visible for 800ms, off for 200ms
-    if (colonVisible && elapsedTime >= 800) {
-        colonVisible = false;
-        lastToggleTime = currentTime;
-    } else if (!colonVisible && elapsedTime >= 200) {
+        // Blink pattern: visible for 800ms, off for 200ms
+        if (colonVisible && elapsedTime >= 800) {
+            colonVisible = false;
+            lastToggleTime = currentTime;
+        } else if (!colonVisible && elapsedTime >= 200) {
+            colonVisible = true;
+            lastToggleTime = currentTime;
+        }
+    } else {
+        // Keep colon visible when countdown is finished
         colonVisible = true;
-        lastToggleTime = currentTime;
     }
 
     if (uclock.getRemainingSeconds() < 3600) { // Less than 1 hour
@@ -1083,7 +1089,7 @@ void updateCountdownDisplay(TFTs::show_t show) {
         tfts.setDigit(HOURS_ONES, uclock.getCountdownMinutesTens(), show);
         tfts.setDigit(MINUTES_TENS, uclock.getCountdownMinutesOnes(), show);
 
-        // Blink the colon on display #2
+        // Show colon based on colonVisible state
         if (colonVisible) {
             tfts.setDigit(MINUTES_ONES, 0, show, TFTs::COLON);
         } else {
