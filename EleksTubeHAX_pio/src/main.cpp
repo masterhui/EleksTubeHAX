@@ -551,19 +551,18 @@ void loop()
     if (currentTime - lastModeSwitch >= MODE_SWITCH_INTERVAL) {
         lastModeSwitch = currentTime;
 
-        // Check if countdown is running
-        if (uclock.isCountdownRunning()) {
+        // Check if countdown is running or countdown effect is still active
+        if (uclock.isCountdownRunning() || countdownFinished) {
             // Alternate between countdown and sensor display
             if (currentMode == COUNTDOWN) {
-                // Do not switch to SENSOR_DISPLAY in the last minute of the countdown or while Backlights::pulse is on
-                if (uclock.getRemainingSeconds() >= 60) {
+                // Do not switch to SENSOR_DISPLAY while countdown is finished and effect is active
+                if (!countdownFinished && uclock.getRemainingSeconds() >= 60) {
                     currentMode = SENSOR_DISPLAY;
                 }
             } else {
                 currentMode = COUNTDOWN;
             }
-        // Do not switch to SENSOR_DISPLAY or CLOCK while Backlights::pulse is on
-        } else if (backlights.getCurrentPattern() != Backlights::pulse){
+        } else {
             // Alternate between clock and sensor display
             if (currentMode == CLOCK) {
                 currentMode = SENSOR_DISPLAY;
@@ -809,10 +808,10 @@ void loop()
     }
   } // if (menu.stateChanged())
 
-  // Countdown has finished, start the background pulse effect
+  // Countdown has finished, start the background breath effect
   if (currentMode == COUNTDOWN && !uclock.isCountdownRunning() && !countdownHandled) {
-    if (backlights.getCurrentPattern() != Backlights::pulse) {
-        backlights.setPattern(Backlights::pulse);
+    if (backlights.getCurrentPattern() != Backlights::breath) {
+        backlights.setPattern(Backlights::breath);
     }
 
     // Set the countdown finished flag and record the finish time
@@ -820,14 +819,14 @@ void loop()
     countdownFinishTime = millis();
     countdownHandled = true;
 
-    // Send countdwon finished message via mqtt
+    // Send countdown finished message via mqtt
     MqttSendCountdownFinished();
   }
 
   // Check if the countdown has finished and if BACKLIGHT_PULSE_DURATION_MS have passed
-  // This is the duration how long the backlight pulse effect is kept on after the countdown has finished
+  // This is the duration how long the backlight breath effect is kept on after the countdown has finished
   if (countdownFinished && (millis() - countdownFinishTime >= BACKLIGHT_PULSE_DURATION_MS)) {
-    // Turn off the pulse effect
+    // Turn off the breath effect
     backlights.setPattern(Backlights::dark);
     countdownFinished = false; // Reset the flag
   }

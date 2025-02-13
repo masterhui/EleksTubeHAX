@@ -130,7 +130,9 @@ void Backlights::pulsePattern()
 
 void Backlights::breathPattern()
 {
-  fill(phaseToColor(config->color_phase));
+  // Force the color to red for breath effect
+  uint32_t redColor = Adafruit_NeoPixel::Color(255, 0, 0);
+  fill(redColor);
 
   // https://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
   // Avoid a 0 value as it shuts off the LEDs and we have to re-initialize.
