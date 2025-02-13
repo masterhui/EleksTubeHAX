@@ -36,6 +36,11 @@ PubSubClient MQTTclient(espClient);
 #define MQTT_ITENSITY_MIN 0
 #define MQTT_ITENSITY_MAX 7
 
+// Add near the top with other defines
+#define MQTT_LWT_TOPIC "tele/IPSTUBE/LWT"
+#define MQTT_LWT_ONLINE "Online"
+#define MQTT_LWT_OFFLINE "Offline"
+
 // private:
 int splitCommand(char *topic, char *tokens[], int tokensNumber);
 void callback(char *topic, byte *payload, unsigned int length);
@@ -440,8 +445,17 @@ void MqttStart()
 
     Serial.println("");
     Serial.println("Connecting to MQTT...");
-    if (MQTTclient.connect(MQTT_CLIENT, MQTT_USERNAME, MQTT_PASSWORD))
+    
+    // Connect with LWT parameters
+    if (MQTTclient.connect(MQTT_CLIENT, MQTT_USERNAME, MQTT_PASSWORD, 
+                          MQTT_LWT_TOPIC,  // LWT topic
+                          0,               // LWT QoS
+                          true,            // LWT retain
+                          MQTT_LWT_OFFLINE // LWT offline message
+                          ))
     {
+      // Publish online status after successful connection
+      MQTTclient.publish(MQTT_LWT_TOPIC, MQTT_LWT_ONLINE, true);
       Serial.println("MQTT connected");
       MqttConnected = true;
     }
@@ -799,6 +813,11 @@ void callback(char *topic, byte *payload, unsigned int length)
       MqttTemperatureSensorOnline = (strcmp(message, "ONLINE") == 0);
   } else if (strcmp(topic, "saunaBox/humidity_status") == 0) {
       MqttHumiditySensorOnline = (strcmp(message, "ONLINE") == 0);
+  }
+
+  // When reconnecting, publish online status
+  if (strcmp(topic, MQTT_LWT_TOPIC) == 0) {
+      MQTTclient.publish(MQTT_LWT_TOPIC, MQTT_LWT_ONLINE, true);
   }
 #endif
 }
@@ -1336,7 +1355,11 @@ void MqttPeriodicReportBack()
       discoveryReported = true;
     }
 #endif
+    // Publish LWT status
+    MQTTclient.publish(MQTT_LWT_TOPIC, MQTT_LWT_ONLINE, true);
+    
     MqttReportBackEverything(true);
+    lastTimeSent = millis();
   }
 }
 
