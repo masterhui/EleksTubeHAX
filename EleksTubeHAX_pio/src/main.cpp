@@ -420,6 +420,11 @@ void loop()
     countdownHandled = false; // Reset the flag
     currentMode = COUNTDOWN;
     
+    // Reset the mode alternation timer when starting a new countdown
+    if (alternateMode) {
+        lastModeSwitch = millis();
+    }
+    
     // Stop any flashing background effect by setting it to constant
     backlights.setPattern(Backlights::dark);
   }
