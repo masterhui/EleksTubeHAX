@@ -391,16 +391,16 @@ void MqttReportState(bool force)
     }
 
     // Report remaining countdown time
-    if (force || abs(static_cast<int>(MqttStatusCountdownRemaining) - static_cast<int>(LastSentCountdownRemaining)) >= 10)   // Only report change if difference is at least 10
+    if (force || MqttStatusCountdownRemaining != LastSentCountdownRemaining)
     {
-        JsonDocument countdownState;
-        countdownState["remaining_time"] = MqttStatusCountdownRemaining; // Assuming this is in seconds
-
-        char countdownBuffer[256];
-        size_t countdownN = serializeJson(countdownState, countdownBuffer);
+        char countdownBuffer[10];
+        uint32_t minutes = MqttStatusCountdownRemaining / 60;
+        uint32_t seconds = MqttStatusCountdownRemaining % 60;
+        snprintf(countdownBuffer, sizeof(countdownBuffer), "%02d:%02d", minutes, seconds);
+        
         const char *countdownTopic = concat2(MQTT_CLIENT, "/countdown/remaining");
         MQTTclient.publish(countdownTopic, countdownBuffer, true);
-        LastSentCountdownRemaining = MqttStatusCountdownRemaining; // Update LastSentCountdownRemaining
+        LastSentCountdownRemaining = MqttStatusCountdownRemaining;
 
         Serial.print("TX MQTT: ");
         Serial.print(countdownTopic);
