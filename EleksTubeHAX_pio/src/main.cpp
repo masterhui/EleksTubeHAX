@@ -419,6 +419,9 @@ void loop()
     uclock.startCountdown(MqttCommandCountdownDuration);
     countdownHandled = false; // Reset the flag
     currentMode = COUNTDOWN;
+    
+    // Stop any flashing background effect by setting it to constant
+    backlights.setPattern(Backlights::dark);
   }
   if (MqttCommandCountdownStopReceived)
   {
