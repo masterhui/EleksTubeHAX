@@ -35,6 +35,10 @@
 #define MQTT_REPORT_STATUS_EVERY_SEC 60 // How often report status to MQTT Broker
 #define MQTT_GIVE_UP_RESTART_SEC 300    // reboot if MQTT stays down this long (WiFi/TCP hang recovery)
 
+// CET / CEST — used by the MQTT summer_time switch (no extra NVS field)
+#define TIMEZONE_WINTER_OFFSET_SEC (1 * 3600)
+#define TIMEZONE_SUMMER_OFFSET_SEC (2 * 3600)
+
 // ************ Temperature config *********************
 #define TEMPERATURE_READ_EVERY_SEC 60 // how often to read the temperature sensor (if present)
 

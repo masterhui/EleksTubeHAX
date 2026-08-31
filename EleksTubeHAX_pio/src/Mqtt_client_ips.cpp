@@ -77,6 +77,8 @@ bool MqttCommandUseTwelveHours = false;
 bool MqttCommandUseTwelveHoursReceived = false;
 bool MqttCommandBlankZeroHours = false;
 bool MqttCommandBlankZeroHoursReceived = false;
+bool MqttCommandSummerTime = false;
+bool MqttCommandSummerTimeReceived = false;
 
 int MqttCommandState = 1;
 bool MqttCommandStateReceived = false;
@@ -123,6 +125,7 @@ bool MqttStatusMainPower = true;
 bool MqttStatusBackPower = true;
 bool MqttStatusUseTwelveHours = true;
 bool MqttStatusBlankZeroHours = true;
+bool MqttStatusSummerTime = false;
 int MqttStatusState = 0;
 int MqttStatusBattery = 7;
 uint8_t MqttStatusBrightness = 0;
@@ -153,6 +156,7 @@ int LastSentGraphic = -1;
 int LastSentMainGraphic = -1;
 bool LastSentUseTwelveHours = false;
 bool LastSentBlankZeroHours = false;
+bool LastSentSummerTime = false;
 uint8_t LastSentPulseBpm = -1;
 uint8_t LastSentBreathBpm = -1;
 float LastSentRainbowSec = -1;
@@ -296,6 +300,24 @@ void MqttReportState(bool force)
       Serial.print(topic);
       Serial.print(" ");
       Serial.println(buffer);
+    }
+
+    if (force || MqttStatusSummerTime != LastSentSummerTime)
+    {
+      JsonDocument state;
+      state["state"] = MqttStatusSummerTime ? MQTT_STATE_ON : MQTT_STATE_OFF;
+
+      char buffer[256];
+      serializeJson(state, buffer);
+      const char *topic = concat2(MQTT_CLIENT, "/summer_time");
+      MQTTclient.publish(topic, buffer, true);
+      LastSentSummerTime = MqttStatusSummerTime;
+#ifdef DEBUG_OUTPUT
+      Serial.print("TX MQTT: ");
+      Serial.print(topic);
+      Serial.print(" ");
+      Serial.println(buffer);
+#endif
     }
 
     if (force || MqttStatusPulseBpm != LastSentPulseBpm)
@@ -485,6 +507,9 @@ void MqttStart()
     MQTTclient.subscribe(subscribeTopic);
 
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/blank_zero_hours/set", MQTT_CLIENT);
+    MQTTclient.subscribe(subscribeTopic);
+
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/summer_time/set", MQTT_CLIENT);
     MQTTclient.subscribe(subscribeTopic);
 
     snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/pulse_bpm/set", MQTT_CLIENT);
@@ -699,6 +724,20 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
       MqttCommandUseTwelveHours = strcmp(doc["state"], MQTT_STATE_ON) == 0;
       MqttCommandUseTwelveHoursReceived = true;
+    }
+
+    doc.clear();
+  }
+  if (strcmp(command[0], "summer_time") == 0 && commandNumber >= 2 && command[1] &&
+      strcmp(command[1], "set") == 0)
+  {
+    JsonDocument doc;
+    deserializeJson(doc, payload, length);
+
+    if (doc["state"].is<const char *>())
+    {
+      MqttCommandSummerTime = strcmp(doc["state"], MQTT_STATE_ON) == 0;
+      MqttCommandSummerTimeReceived = true;
     }
 
     doc.clear();
@@ -1068,6 +1107,7 @@ void MqttReportDiscovery()
   const SwitchEnt switchList[] = {
       {"_use_twelve_hours", "use_twelve_hours", "Use Twelve Hours", "/use_twelve_hours"},
       {"_blank_zero_hours", "blank_zero_hours", "Blank Zero Hours", "/blank_zero_hours"},
+      {"_summer_time", "summer_time", "Summer Time", "/summer_time"},
       {"_countdown", "countdown", "Countdown", "/countdown"},
       {"_alternate", "alternate", "Alternate Mode", "/alternate"},
   };

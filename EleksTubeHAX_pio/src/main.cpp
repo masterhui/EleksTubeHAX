@@ -224,6 +224,7 @@ void loop()
       MqttCommandMainGraphicReceived ||
       MqttCommandUseTwelveHoursReceived ||
       MqttCommandBlankZeroHoursReceived ||
+      MqttCommandSummerTimeReceived ||
       MqttCommandPulseBpmReceived ||
       MqttCommandBreathBpmReceived ||
       MqttCommandRainbowSecReceived ||
@@ -395,6 +396,15 @@ void loop()
     uclock.setBlankHoursZero(MqttCommandBlankZeroHours);
   }
 
+  if (MqttCommandSummerTimeReceived)
+  {
+    MqttCommandSummerTimeReceived = false;
+    uclock.setTimeZoneOffset(MqttCommandSummerTime ? TIMEZONE_SUMMER_OFFSET_SEC
+                                                   : TIMEZONE_WINTER_OFFSET_SEC);
+    uclock.loop();
+    updateDisplay(TFTs::force);
+  }
+
   if (MqttCommandPulseBpmReceived)
   {
     MqttCommandPulseBpmReceived = false;
@@ -491,6 +501,7 @@ void loop()
   MqttStatusMainGraphic = uclock.getActiveGraphicIdx();
   MqttStatusUseTwelveHours = uclock.getTwelveHour();
   MqttStatusBlankZeroHours = uclock.getBlankHoursZero();
+  MqttStatusSummerTime = (uclock.getTimeZoneOffset() >= TIMEZONE_SUMMER_OFFSET_SEC);
   MqttStatusPulseBpm = backlights.getPulseRate();
   MqttStatusBreathBpm = backlights.getBreathRate();
   MqttStatusRainbowSec = backlights.getRainbowDuration();
