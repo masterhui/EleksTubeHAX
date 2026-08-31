@@ -554,24 +554,23 @@ void loop()
 #endif
 
   // Other display updates or logic
-  if (alternateMode) {
+  // Do not alternate or force-redraw while the countdown-finished breath
+  // effect is running — a full 6-tube BMP blit stalls NeoPixel updates.
+  if (alternateMode && !countdownFinished) {
     unsigned long currentTime = millis();
     if (currentTime - lastModeSwitch >= MODE_SWITCH_INTERVAL) {
         lastModeSwitch = currentTime;
+        Mode previousMode = currentMode;
 
-        // Check if countdown is running or countdown effect is still active
-        if (uclock.isCountdownRunning() || countdownFinished) {
-            // Alternate between countdown and sensor display
+        if (uclock.isCountdownRunning()) {
             if (currentMode == COUNTDOWN) {
-                // Do not switch to SENSOR_DISPLAY while countdown is finished and effect is active
-                if (!countdownFinished && uclock.getRemainingSeconds() >= 60) {
+                if (uclock.getRemainingSeconds() >= 60) {
                     currentMode = SENSOR_DISPLAY;
                 }
             } else {
                 currentMode = COUNTDOWN;
             }
         } else {
-            // Alternate between clock and sensor display
             if (currentMode == CLOCK) {
                 currentMode = SENSOR_DISPLAY;
             } else {
@@ -579,7 +578,9 @@ void loop()
             }
         }
 
-        updateDisplay(TFTs::force);
+        if (currentMode != previousMode) {
+            updateDisplay(TFTs::force);
+        }
     }
   }
 
@@ -842,8 +843,11 @@ void loop()
   uint32_t time_in_loop = millis() - millis_at_top;
   if (time_in_loop < 20)
   {
-    // we have free time, spend it for loading next image into buffer
-    tfts.LoadNextImage();
+    // Skip SPIFFS preload during the finished-countdown breath effect
+    if (!countdownFinished)
+    {
+      tfts.LoadNextImage();
+    }
 
     // we still have extra time
     time_in_loop = millis() - millis_at_top;
