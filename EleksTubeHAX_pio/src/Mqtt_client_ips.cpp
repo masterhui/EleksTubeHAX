@@ -773,15 +773,19 @@ void callback(char *topic, byte *payload, unsigned int length)
       }
   }
 
-  if (strcmp(command[0], "temperature") == 0) {
-      float temperature = atof(message);
-      // Store the temperature value for display
-      MqttCommandTemperature = temperature;
+  // saunaBox topics are not under IPSTUBE/; match the full topic (and the
+  // old "temperature"/"humidity" first-token form from the previous splitter).
+  if (strcmp(topic, "saunaBox/temperature") == 0 ||
+      strcmp(command[0], "temperature") == 0 ||
+      (commandNumber >= 2 && command[1] && strcmp(command[0], "saunaBox") == 0 &&
+       strcmp(command[1], "temperature") == 0)) {
+      MqttCommandTemperature = atof(message);
       MqttCommandTemperatureReceived = true;
-  } else if (strcmp(command[0], "humidity") == 0) {
-      float humidity = atof(message);
-      // Store the humidity value for display
-      MqttCommandHumidity = humidity;
+  } else if (strcmp(topic, "saunaBox/humidity") == 0 ||
+             strcmp(command[0], "humidity") == 0 ||
+             (commandNumber >= 2 && command[1] && strcmp(command[0], "saunaBox") == 0 &&
+              strcmp(command[1], "humidity") == 0)) {
+      MqttCommandHumidity = atof(message);
       MqttCommandHumidityReceived = true;
   }
 
