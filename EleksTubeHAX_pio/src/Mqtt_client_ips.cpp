@@ -848,8 +848,17 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
 
   if (strcmp(topic, "saunaBox/power_status") == 0) {
-      MqttCommandSaunaPower = strcmp(message, "ON") == 0;
-      MqttCommandSaunaPowerReceived = true;
+      bool on = (strcmp(message, "ON") == 0);
+      // Periodic retained/refresh publishes must not override a manual color.
+      // Apply orange/blue only on a real ON<->OFF edge (and once after boot).
+      static bool haveSaunaPower = false;
+      static bool lastSaunaPower = false;
+      if (!haveSaunaPower || on != lastSaunaPower) {
+          haveSaunaPower = true;
+          lastSaunaPower = on;
+          MqttCommandSaunaPower = on;
+          MqttCommandSaunaPowerReceived = true;
+      }
   }
 
   if (strcmp(topic, "saunaBox/temperature_status") == 0) {
