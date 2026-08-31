@@ -42,7 +42,8 @@ PubSubClient MQTTclient(espClient);
 #define MQTT_LWT_OFFLINE "Offline"
 
 // private:
-int splitCommand(char *topic, char *tokens[], int tokensNumber);
+int splitCommand(char *topic, char *tokens[], int tokensNumber, char *commandBuf, int commandBufLen);
+bool discoveryReported = false;
 void callback(char *topic, byte *payload, unsigned int length);
 
 void MqttReportBattery();
@@ -61,6 +62,7 @@ char msg[5];
 uint32_t lastTimeSent = (uint32_t)(MQTT_REPORT_STATUS_EVERY_SEC * -1000);
 uint8_t LastNotificationChecksum = 0;
 uint32_t LastTimeTriedToConnect = 0;
+uint32_t mqttDisconnectedSince = 0;
 
 bool MqttConnected = true; // skip error message if disabled
 // commands from server    // = "directive/status"
@@ -156,7 +158,7 @@ uint8_t LastSentBreathBpm = -1;
 float LastSentRainbowSec = -1;
 bool LastSentCountdownMode = false;
 bool LastSentCountdownRunning = false;
-uint32_t LastSentCountdownRemaining = 0;
+uint32_t LastSentCountdownRemaining = 0xFFFFFFFFu;
 bool LastSentAlternate = false;
 char LastSentMode[20] = ""; // Add this line to declare the variable
 
@@ -198,13 +200,7 @@ void sendToBroker(const char *topic, const char *message)
     Serial.print(topicArr);
     Serial.print("/");
     Serial.println(message);
-#else
-    Serial.print("TX MQTT: ");
-    Serial.print(topicArr);
-    Serial.print(" ");
-    Serial.println(message);
 #endif
-    delay(120);
   }
 }
 
@@ -247,7 +243,7 @@ void MqttReportState(bool force)
       state["color"]["h"] = backlights.phaseToHue(MqttStatusBackColorPhase);
       state["color"]["s"] = 100.f;
       state["pulse_bpm"] = MqttStatusPulseBpm;
-      state["beath_bpm"] = MqttStatusBreathBpm;
+      state["breath_bpm"] = MqttStatusBreathBpm;
       state["rainbow_sec"] = round1(MqttStatusRainbowSec);
 
       char buffer[256];
@@ -390,24 +386,6 @@ void MqttReportState(bool force)
       Serial.println(buffer);
     }
 
-    // Report remaining countdown time
-    if (force || MqttStatusCountdownRemaining != LastSentCountdownRemaining)
-    {
-        char countdownBuffer[10];
-        uint32_t minutes = MqttStatusCountdownRemaining / 60;
-        uint32_t seconds = MqttStatusCountdownRemaining % 60;
-        snprintf(countdownBuffer, sizeof(countdownBuffer), "%02d:%02d", minutes, seconds);
-        
-        const char *countdownTopic = concat2(MQTT_CLIENT, "/countdown/remaining");
-        MQTTclient.publish(countdownTopic, countdownBuffer, true);
-        LastSentCountdownRemaining = MqttStatusCountdownRemaining;
-
-        Serial.print("TX MQTT: ");
-        Serial.print(countdownTopic);
-        Serial.print(" ");
-        Serial.println(countdownBuffer);
-    }
-
     // Status reporting for mode
     if (force || strcmp(modeToString(getCurrentMode()), LastSentMode) != 0)
     {
@@ -436,12 +414,14 @@ void MqttStart()
 {
 #ifdef MQTT_ENABLED
   MqttConnected = false;
-  if (((millis() - LastTimeTriedToConnect) > (MQTT_RECONNECT_WAIT_SEC * 100)) || (LastTimeTriedToConnect == 0))
+  if (((millis() - LastTimeTriedToConnect) > (MQTT_RECONNECT_WAIT_SEC * 1000)) || (LastTimeTriedToConnect == 0))
   {
     LastTimeTriedToConnect = millis();
     MQTTclient.setServer(MQTT_BROKER, MQTT_PORT);
     MQTTclient.setCallback(callback);
     MQTTclient.setBufferSize(2048);
+    MQTTclient.setKeepAlive(30);
+    MQTTclient.setSocketTimeout(5);
 
     Serial.println("");
     Serial.println("Connecting to MQTT...");
@@ -458,6 +438,10 @@ void MqttStart()
       MQTTclient.publish(MQTT_LWT_TOPIC, MQTT_LWT_ONLINE, true);
       Serial.println("MQTT connected");
       MqttConnected = true;
+      mqttDisconnectedSince = 0;
+      discoveryReported = false;
+      MQTTclient.publish(concat2(MQTT_CLIENT, "/countdown/finished"), "", true);
+      MQTTclient.publish(concat2(MQTT_CLIENT, "/countdown/remaining"), "", true);
     }
     else
     {
@@ -520,11 +504,10 @@ void MqttStart()
     MQTTclient.subscribe(subscribeTopic);
 
     // Subscribe to the temperature status topic
-    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/temperature", MQTT_CLIENT);
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/temperature");
     MQTTclient.subscribe(subscribeTopic);
 
-    // Subscribe to the humidity status topic
-    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/humidity", MQTT_CLIENT);
+    snprintf(subscribeTopic, sizeof(subscribeTopic), "saunaBox/humidity");
     MQTTclient.subscribe(subscribeTopic);
 
     // Subscribe to mode changes
@@ -547,25 +530,26 @@ void MqttStart()
 #endif
 }
 
-int splitCommand(char *topic, char *tokens[], int tokensNumber)
+int splitCommand(char *topic, char *tokens[], int tokensNumber, char *commandBuf, int commandBufLen)
 {
   int mqttClientLength = strlen(MQTT_CLIENT);
-  int topicLength = strlen(topic);
-  int finalLength = topicLength - mqttClientLength + 2;
-  char *command = (char *)malloc(finalLength);
+  const char *rest = topic;
+  if (strncmp(topic, MQTT_CLIENT, mqttClientLength) == 0 && topic[mqttClientLength] == '/')
+  {
+    rest = topic + mqttClientLength + 1;
+  }
 
-  strncpy(command, topic + (mqttClientLength + 1), finalLength - 2);
+  strncpy(commandBuf, rest, commandBufLen - 1);
+  commandBuf[commandBufLen - 1] = '\0';
 
   const char s[2] = "/";
   int pos = 0;
-  tokens[0] = strtok(command, s);
+  tokens[0] = strtok(commandBuf, s);
   while (pos < tokensNumber - 1 && tokens[pos] != NULL)
   {
     pos++;
     tokens[pos] = strtok(NULL, s);
   }
-
-  free(command);
 
   return pos;
 }
@@ -575,7 +559,22 @@ void checkMqtt()
   MqttConnected = MQTTclient.connected();
   if (!MqttConnected)
   {
+    if (mqttDisconnectedSince == 0)
+    {
+      mqttDisconnectedSince = millis();
+      Serial.println("MQTT disconnected");
+    }
+    else if ((millis() - mqttDisconnectedSince) > (MQTT_GIVE_UP_RESTART_SEC * 1000UL))
+    {
+      Serial.println("MQTT down too long, restarting ESP32");
+      delay(100);
+      ESP.restart();
+    }
     MqttStart();
+  }
+  else
+  {
+    mqttDisconnectedSince = 0;
   }
 }
 
@@ -586,8 +585,9 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.print(topic); // long output
 #endif
   int commandNumber = 10;
-  char *command[commandNumber];
-  commandNumber = splitCommand(topic, command, commandNumber);
+  char *command[10];
+  char commandBuf[100];
+  commandNumber = splitCommand(topic, command, commandNumber, commandBuf, sizeof(commandBuf));
 
   char message[length + 1];
   strncpy(message, (char *)payload, length);
@@ -822,18 +822,46 @@ void callback(char *topic, byte *payload, unsigned int length)
 #endif
 }
 
+void MqttPublishCountdownRemaining()
+{
+#ifdef MQTT_ENABLED
+  if (!MQTTclient.connected())
+  {
+    return;
+  }
+  if (MqttStatusCountdownRemaining == LastSentCountdownRemaining)
+  {
+    return;
+  }
+  char countdownBuffer[10];
+  uint32_t minutes = MqttStatusCountdownRemaining / 60;
+  uint32_t seconds = MqttStatusCountdownRemaining % 60;
+  snprintf(countdownBuffer, sizeof(countdownBuffer), "%02d:%02d", minutes, seconds);
+  const char *countdownTopic = concat2(MQTT_CLIENT, "/countdown/remaining");
+  MQTTclient.publish(countdownTopic, countdownBuffer, false);
+  LastSentCountdownRemaining = MqttStatusCountdownRemaining;
+#ifdef DEBUG_OUTPUT
+  Serial.print("TX MQTT: ");
+  Serial.print(countdownTopic);
+  Serial.print(" ");
+  Serial.println(countdownBuffer);
+#endif
+#endif
+}
+
 void MqttLoopFrequently()
 {
 #ifdef MQTT_ENABLED
   MQTTclient.loop();
   checkMqtt();
+  MqttPublishCountdownRemaining();
+  MqttReportBackOnChange();
 #endif
 }
 
 void MqttLoopInFreeTime()
 {
 #ifdef MQTT_ENABLED
-  MqttReportBackOnChange();
   MqttPeriodicReportBack();
 #endif
 }
@@ -940,31 +968,69 @@ void MqttReportBackEverything(bool force)
   }
 }
 
-bool discoveryReported = false;
-
 void MqttReportDiscovery()
 {
 #ifdef MQTT_HOME_ASSISTANT_DISCOVERY
-  char json_buffer[2048];
   JsonDocument discovery;
+  char uid[64];
+  char topic[160];
+  char state_topic[96];
+  char cmd_topic[112];
+  char json_buffer[2048];
 
-  // Add these common LWT settings to each discovery entity
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
+  auto fillCommon = [&](const char *unique_suffix, const char *name) {
+    discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
+    discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
+    discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
+    discovery["device"]["identifiers"][0] = MQTT_CLIENT;
+    discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
+    discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
+    discovery["device"]["name"] = MQTT_CLIENT;
+    discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
+    discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
+    discovery["device"]["connections"][0][0] = "mac";
+    discovery["device"]["connections"][0][1] = WiFi.macAddress();
+    snprintf(uid, sizeof(uid), "%s%s", MQTT_CLIENT, unique_suffix);
+    discovery["unique_id"] = uid;
+    discovery["object_id"] = uid;
+    discovery["name"] = name;
+  };
 
-  // Main Light Discovery
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_main");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_main");
-  discovery["name"] = "Main";
+  auto publishDiscovery = [&](const char *component, const char *object_id) {
+    snprintf(topic, sizeof(topic), "homeassistant/%s/%s/%s/config", component, MQTT_CLIENT, object_id);
+    serializeJson(discovery, json_buffer, sizeof(json_buffer));
+    MQTTclient.publish(topic, json_buffer, true);
+    MQTTclient.loop();
+#ifdef DEBUG_OUTPUT
+    Serial.print("TX MQTT: ");
+    Serial.print(topic);
+    Serial.print(" ");
+    Serial.println(json_buffer);
+#endif
+  };
+
+  static const char *kObsoleteDiscovery[] = {
+      "homeassistant/light/IPSTUBE_main/light/config",
+      "homeassistant/light/IPSTUBE_back/light/config",
+      "homeassistant/switch/IPSTUBE_use_twelve_hours/switch/config",
+      "homeassistant/switch/IPSTUBE_blank_zero_hours/switch/config",
+      "homeassistant/switch/IPSTUBE_countdown/switch/config",
+      "homeassistant/switch/IPSTUBE_alternate/switch/config",
+      "homeassistant/switch/IPSTUBE_countdown_start/switch/config",
+      "homeassistant/switch/IPSTUBE_countdown_stop/switch/config",
+      "homeassistant/number/IPSTUBE_pulse_bpm/number/config",
+      "homeassistant/number/IPSTUBE_breath_bpm/number/config",
+      "homeassistant/number/IPSTUBE_rainbow_duration/number/config",
+      "homeassistant/number/IPSTUBE_countdown/number/config",
+      "homeassistant/select/IPSTUBE_mode_set/select/config",
+  };
+  for (size_t i = 0; i < sizeof(kObsoleteDiscovery) / sizeof(kObsoleteDiscovery[0]); i++)
+  {
+    MQTTclient.publish(kObsoleteDiscovery[i], "", true);
+  }
+
+  discovery.clear();
+  fillCommon("_main", "Main");
   discovery["schema"] = "json";
   discovery["state_topic"] = concat2(MQTT_CLIENT, "/main");
   discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/main");
@@ -972,36 +1038,14 @@ void MqttReportDiscovery()
   discovery["brightness"] = true;
   discovery["brightness_scale"] = 255;
   discovery["effect"] = true;
-  for (size_t i = 1; i <= tfts.NumberOfClockFaces; i++)
+  for (uint8_t i = 1; i <= tfts.NumberOfClockFaces; i++)
   {
     discovery["effect_list"][i - 1] = tfts.clockFaceToName(i);
   }
-  size_t main_n = serializeJson(discovery, json_buffer);
-  const char *main_topic = concat3("homeassistant/light/", MQTT_CLIENT, "_main/light/config");
-  MQTTclient.publish(main_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(main_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
+  publishDiscovery("light", "main");
 
-  // Back Light Discovery
   discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_back");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_back");
-  discovery["name"] = "Back";
+  fillCommon("_back", "Back");
   discovery["schema"] = "json";
   discovery["state_topic"] = concat2(MQTT_CLIENT, "/back");
   discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/back");
@@ -1009,366 +1053,105 @@ void MqttReportDiscovery()
   discovery["brightness"] = true;
   discovery["brightness_scale"] = 7;
   discovery["effect"] = true;
-  for (size_t i = 0; i < backlights.num_patterns; i++)
+  for (int i = 0; i < Backlights::num_patterns; i++)
   {
     discovery["effect_list"][i] = backlights.patterns_str[i];
   }
   discovery["supported_color_modes"][0] = "hs";
-  size_t back_n = serializeJson(discovery, json_buffer);
-  const char *back_topic = concat3("homeassistant/light/", MQTT_CLIENT, "_back/light/config");
-  MQTTclient.publish(back_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(back_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
+  publishDiscovery("light", "back");
 
-  // Use Twelve Hours Discovery
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_use_twelve_hours");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_use_twelve_hours");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Use Twelve Hours";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/use_twelve_hours");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/use_twelve_hours");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/use_twelve_hours/set");
-  discovery["value_template"] = "{{ value_json.state }}";
-  discovery["state_on"] = "ON";
-  discovery["state_off"] = "OFF";
-  discovery["payload_on"] = "{\"state\":\"ON\"}";
-  discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  size_t useTwelveHours_n = serializeJson(discovery, json_buffer);
-  const char *useTwelveHours_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_use_twelve_hours/switch/config");
-  MQTTclient.publish(useTwelveHours_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(useTwelveHours_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
+  struct SwitchEnt { const char *suffix; const char *oid; const char *name; const char *path; };
+  const SwitchEnt switchList[] = {
+      {"_use_twelve_hours", "use_twelve_hours", "Use Twelve Hours", "/use_twelve_hours"},
+      {"_blank_zero_hours", "blank_zero_hours", "Blank Zero Hours", "/blank_zero_hours"},
+      {"_countdown", "countdown", "Countdown", "/countdown"},
+      {"_alternate", "alternate", "Alternate Mode", "/alternate"},
+  };
+  for (size_t i = 0; i < sizeof(switchList) / sizeof(switchList[0]); i++)
+  {
+    const SwitchEnt &sw = switchList[i];
+    discovery.clear();
+    fillCommon(sw.suffix, sw.name);
+    discovery["entity_category"] = "config";
+    snprintf(state_topic, sizeof(state_topic), "%s%s", MQTT_CLIENT, sw.path);
+    snprintf(cmd_topic, sizeof(cmd_topic), "%s%s/set", MQTT_CLIENT, sw.path);
+    discovery["state_topic"] = state_topic;
+    discovery["json_attributes_topic"] = state_topic;
+    discovery["command_topic"] = cmd_topic;
+    discovery["value_template"] = "{{ value_json.state }}";
+    discovery["state_on"] = "ON";
+    discovery["state_off"] = "OFF";
+    discovery["payload_on"] = "{\"state\":\"ON\"}";
+    discovery["payload_off"] = "{\"state\":\"OFF\"}";
+    publishDiscovery("switch", sw.oid);
+  }
 
-  // Blank Zero Hours Discovery
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_blank_zero_hours");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_blank_zero_hours");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Blank Zero Hours";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/blank_zero_hours");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/blank_zero_hours");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/blank_zero_hours/set");
-  discovery["value_template"] = "{{ value_json.state }}";
-  discovery["state_on"] = "ON";
-  discovery["state_off"] = "OFF";
-  discovery["payload_on"] = "{\"state\":\"ON\"}";
-  discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  size_t blankZeroHours_n = serializeJson(discovery, json_buffer);
-  const char *blankZeroHours_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_blank_zero_hours/switch/config");
-  MQTTclient.publish(blankZeroHours_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(blankZeroHours_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
+  struct NumEnt { const char *suffix; const char *oid; const char *name; const char *path; float minv; float maxv; float step; };
+  const NumEnt numList[] = {
+      {"_pulse_bpm", "pulse_bpm", "Pulse, bpm", "/pulse_bpm", 20, 120, 1},
+      {"_breath_bpm", "breath_bpm", "Breath, bpm", "/breath_bpm", 5, 60, 1},
+      {"_rainbow_duration", "rainbow_duration", "Rainbow, sec", "/rainbow_duration", 0.2f, 10, 0.1f},
+  };
+  for (size_t i = 0; i < sizeof(numList) / sizeof(numList[0]); i++)
+  {
+    const NumEnt &nm = numList[i];
+    discovery.clear();
+    fillCommon(nm.suffix, nm.name);
+    discovery["entity_category"] = "config";
+    snprintf(state_topic, sizeof(state_topic), "%s%s", MQTT_CLIENT, nm.path);
+    snprintf(cmd_topic, sizeof(cmd_topic), "%s%s/set", MQTT_CLIENT, nm.path);
+    discovery["state_topic"] = state_topic;
+    discovery["json_attributes_topic"] = state_topic;
+    discovery["command_topic"] = cmd_topic;
+    discovery["command_template"] = "{\"state\":{{value}}}";
+    discovery["step"] = nm.step;
+    discovery["min"] = nm.minv;
+    discovery["max"] = nm.maxv;
+    discovery["mode"] = "slider";
+    discovery["value_template"] = "{{ value_json.state }}";
+    publishDiscovery("number", nm.oid);
+  }
 
-  // Pulses per minute
   discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_pulse_bpm");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_pulse_bpm");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Pulse, bpm";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/pulse_bpm");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/pulse_bpm");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/pulse_bpm/set");
-  discovery["command_template"] = "{\"state\":{{value}}}";
-  discovery["step"] = 1;
-  discovery["min"] = 20;
-  discovery["max"] = 120;
-  discovery["mode"] = "slider";
-  discovery["value_template"] = "{{ value_json.state }}";
-  size_t pulseBpm_n = serializeJson(discovery, json_buffer);
-  const char *pulseBpm_topic = concat3("homeassistant/number/", MQTT_CLIENT, "_pulse_bpm/number/config");
-  MQTTclient.publish(pulseBpm_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(pulseBpm_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Breathes per minute
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_breath_bpm");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_breath_bpm");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Breath, bpm";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/breath_bpm");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/breath_bpm");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/breath_bpm/set");
-  discovery["command_template"] = "{\"state\":{{value}}}";
-  discovery["step"] = 1;
-  discovery["min"] = 5;
-  discovery["max"] = 60;
-  discovery["mode"] = "slider";
-  discovery["value_template"] = "{{ value_json.state }}";
-  size_t breathBpm_n = serializeJson(discovery, json_buffer);
-  const char *breathBpm_topic = concat3("homeassistant/number/", MQTT_CLIENT, "_breath_bpm/number/config");
-  MQTTclient.publish(breathBpm_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(breathBpm_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Rainbow duration
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_rainbow_duration");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_rainbow_duration");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Rainbow, sec";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/rainbow_duration");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/rainbow_duration");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/rainbow_duration/set");
-  discovery["command_template"] = "{\"state\":{{value}}}";
-  discovery["step"] = 0.1;
-  discovery["min"] = 0.2;
-  discovery["max"] = 10;
-  discovery["mode"] = "slider";
-  discovery["value_template"] = "{{ value_json.state }}";
-  size_t rainbowSec_n = serializeJson(discovery, json_buffer);
-  const char *rainbowSec_topic = concat3("homeassistant/number/", MQTT_CLIENT, "_rainbow_duration/number/config");
-  MQTTclient.publish(rainbowSec_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(rainbowSec_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Add countdown control
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Countdown";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/set");
-  discovery["value_template"] = "{{ value_json.state }}";
-  discovery["state_on"] = "ON";
-  discovery["state_off"] = "OFF";
-  discovery["payload_on"] = "{\"state\":\"ON\"}";
-  discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  size_t countdown_n = serializeJson(discovery, json_buffer);
-  const char *countdown_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown/switch/config");
-  MQTTclient.publish(countdown_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(countdown_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Alternate mode switch
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_alternate");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_alternate");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Alternate Mode";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/alternate");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/alternate");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/alternate/set");
-  discovery["value_template"] = "{{ value_json.state }}";
-  discovery["state_on"] = "ON";
-  discovery["state_off"] = "OFF";
-  discovery["payload_on"] = "{\"state\":\"ON\"}";
-  discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  size_t n = serializeJson(discovery, json_buffer);
-  const char *alternate_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_alternate/switch/config");
-  MQTTclient.publish(alternate_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(alternate_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Countdown Start Discovery
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown_start");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown_start");
-  discovery["name"] = "Countdown Start";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/start");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/start/set");
-  discovery["value_template"] = "{{ value_json.state }}";
-  discovery["state_on"] = "ON";
-  discovery["state_off"] = "OFF";
-  discovery["payload_on"] = "{\"state\":\"ON\"}";
-  discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  size_t countdown_start_n = serializeJson(discovery, json_buffer);
-  const char *countdown_start_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown_start/switch/config");
-  MQTTclient.publish(countdown_start_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(countdown_start_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Countdown Stop Discovery
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_countdown_stop");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_countdown_stop");
-  discovery["entity_category"] = "config";
-  discovery["name"] = "Countdown Stop";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/stop");
-  discovery["json_attributes_topic"] = concat2(MQTT_CLIENT, "/countdown/stop");
-  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/stop/set");
-  discovery["value_template"] = "{{ value_json.state }}";
-  discovery["state_on"] = "ON";
-  discovery["state_off"] = "OFF";
-  discovery["payload_on"] = "{\"state\":\"ON\"}";
-  discovery["payload_off"] = "{\"state\":\"OFF\"}";
-  size_t countdown_stop_n = serializeJson(discovery, json_buffer);
-  const char *countdown_stop_topic = concat3("homeassistant/switch/", MQTT_CLIENT, "_countdown_stop/switch/config");
-  MQTTclient.publish(countdown_stop_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(countdown_stop_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
-
-  // Mode Set Discovery
-  discovery.clear();
-  discovery["availability"][0]["topic"] = MQTT_LWT_TOPIC;
-  discovery["availability"][0]["payload_available"] = MQTT_LWT_ONLINE;
-  discovery["availability"][0]["payload_not_available"] = MQTT_LWT_OFFLINE;
-  discovery["device"]["identifiers"][0] = MQTT_CLIENT;
-  discovery["device"]["manufacturer"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MANUFACTURER;
-  discovery["device"]["model"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["name"] = MQTT_HOME_ASSISTANT_DISCOVERY_DEVICE_MODEL;
-  discovery["device"]["sw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_SW_VERSION;
-  discovery["device"]["hw_version"] = MQTT_HOME_ASSISTANT_DISCOVERY_HW_VERSION;
-  discovery["device"]["connections"][0][0] = "mac";
-  discovery["device"]["connections"][0][1] = WiFi.macAddress();
-  discovery["unique_id"] = concat2(MQTT_CLIENT, "_mode_set");
-  discovery["object_id"] = concat2(MQTT_CLIENT, "_mode_set");
-  discovery["name"] = "Mode Set";
-  discovery["state_topic"] = concat2(MQTT_CLIENT, "/mode/set");
+  fillCommon("_mode", "Mode");
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/mode");
   discovery["command_topic"] = concat2(MQTT_CLIENT, "/mode/set");
   discovery["value_template"] = "{{ value_json.state }}";
-  size_t mode_set_n = serializeJson(discovery, json_buffer);
-  const char *mode_set_topic = concat3("homeassistant/select/", MQTT_CLIENT, "_mode_set/select/config");
-  MQTTclient.publish(mode_set_topic, json_buffer, true);
-  delay(120);
-  Serial.print("TX MQTT: ");
-  Serial.print(mode_set_topic);
-  Serial.print(" ");
-  Serial.println(json_buffer);
-  discovery.clear();
+  discovery["options"][0] = "clock";
+  discovery["options"][1] = "sensor_display";
+  discovery["options"][2] = "countdown";
+  publishDiscovery("select", "mode");
 
+  discovery.clear();
+  fillCommon("_countdown_start", "Countdown Start");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/start");
+  discovery["min"] = 1;
+  discovery["max"] = 90;
+  discovery["step"] = 1;
+  discovery["mode"] = "box";
+  discovery["optimistic"] = true;
+  discovery["unit_of_measurement"] = "min";
+  publishDiscovery("number", "countdown_start");
+
+  discovery.clear();
+  fillCommon("_countdown_stop", "Countdown Stop");
+  discovery["command_topic"] = concat2(MQTT_CLIENT, "/countdown/stop");
+  discovery["payload_press"] = "ON";
+  discovery["entity_category"] = "config";
+  publishDiscovery("button", "countdown_stop");
+
+  discovery.clear();
+  fillCommon("_countdown_remaining", "Countdown Remaining");
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/remaining");
+  discovery["icon"] = "mdi:timer";
+  publishDiscovery("sensor", "countdown_remaining");
+
+  discovery.clear();
+  fillCommon("_countdown_finished", "Countdown Finished");
+  discovery["state_topic"] = concat2(MQTT_CLIENT, "/countdown/finished");
+  discovery["payload_on"] = "Countdown has finished";
+  discovery["payload_off"] = "OFF";
+  publishDiscovery("binary_sensor", "countdown_finished");
 #endif
 }
 
@@ -1418,15 +1201,14 @@ void setMqttCommandMode(const char* mode) {
 }
 
 void MqttSendCountdownFinished() {
-    if (MqttConnected) {
+    if (MQTTclient.connected()) {
         const char* topic = concat2(MQTT_CLIENT, "/countdown/finished");
-        const char* message = "Countdown has finished";
-        MQTTclient.publish(topic, message, true);
-        
+        MQTTclient.publish(topic, "Countdown has finished", false);
+#ifdef DEBUG_OUTPUT
         Serial.print("Sent MQTT message: ");
         Serial.print(topic);
-        Serial.print(" - ");
-        Serial.println(message);
+        Serial.println(" - Countdown has finished");
+#endif
     } else {
         Serial.println("MQTT not connected, cannot send countdown finished message.");
     }

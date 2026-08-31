@@ -189,46 +189,51 @@ void Clock::startCountdown(uint32_t seconds) {
     countdown_duration = seconds;
     countdown_start = millis();
     countdown_running = true;
+    remaining_cache = seconds;
 }
 
 void Clock::stopCountdown() {
     countdown_running = false;
+    remaining_cache = 0;
 }
 
 uint32_t Clock::getRemainingSeconds() {
     if (!countdown_running) {
+        remaining_cache = 0;
         return 0;
     }
-    
+
     uint32_t elapsed = (millis() - countdown_start) / 1000;
     if (elapsed >= countdown_duration) {
         countdown_running = false;
+        remaining_cache = 0;
         return 0;
     }
-    return countdown_duration - elapsed;
+    remaining_cache = countdown_duration - elapsed;
+    return remaining_cache;
 }
 
 uint8_t Clock::getCountdownHoursTens() {
-    return (getRemainingSeconds() / 3600) / 10;
+    return (remaining_cache / 3600) / 10;
 }
 
 uint8_t Clock::getCountdownHoursOnes() {
-    return (getRemainingSeconds() / 3600) % 10;
+    return (remaining_cache / 3600) % 10;
 }
 
 uint8_t Clock::getCountdownMinutesTens() {
-    return ((getRemainingSeconds() % 3600) / 60) / 10;
+    return ((remaining_cache % 3600) / 60) / 10;
 }
 
 uint8_t Clock::getCountdownMinutesOnes() {
-    return ((getRemainingSeconds() % 3600) / 60) % 10;
+    return ((remaining_cache % 3600) / 60) % 10;
 }
 
 uint8_t Clock::getCountdownSecondsTens() {
-    return (getRemainingSeconds() % 60) / 10;
+    return (remaining_cache % 60) / 10;
 }
 
 uint8_t Clock::getCountdownSecondsOnes() {
-    return (getRemainingSeconds() % 60) % 10;
+    return (remaining_cache % 60) % 10;
 }
 

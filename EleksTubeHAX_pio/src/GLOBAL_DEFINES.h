@@ -33,6 +33,7 @@
 // ************ MQTT config *********************
 #define MQTT_RECONNECT_WAIT_SEC 30      // how long to wait between retries to connect to broker
 #define MQTT_REPORT_STATUS_EVERY_SEC 60 // How often report status to MQTT Broker
+#define MQTT_GIVE_UP_RESTART_SEC 300    // reboot if MQTT stays down this long (WiFi/TCP hang recovery)
 
 // ************ Temperature config *********************
 #define TEMPERATURE_READ_EVERY_SEC 60 // how often to read the temperature sensor (if present)
@@ -74,12 +75,12 @@
 // Define the activate and deactivate state for the diplay power transistor
 // also define, how the dimming value is calculated
 #ifndef HARDWARE_IPSTUBE_CLOCK
-#define ACTIVATEDISPLAYS HIGH  // Activate is HIGH for the IPSTUBEs
-#define DEACTIVATEDISPLAYS LOW // Deactivate is LOW for the IPSTUBEs
+#define ACTIVATEDISPLAYS HIGH  // Activate is HIGH for EleksTube / most clones
+#define DEACTIVATEDISPLAYS LOW // Deactivate is LOW for EleksTube / most clones
 #define CALCDIMVALUE(x) (x)    // Dimming value is directly used for software dimming
 #else
-#define ACTIVATEDISPLAYS LOW      // Activate is LOW for the Elekstube
-#define DEACTIVATEDISPLAYS HIGH   // Deactivate is HIGH for the Elekstube
+#define ACTIVATEDISPLAYS LOW      // Activate is LOW for IPSTUBE (GPIO4 transistor)
+#define DEACTIVATEDISPLAYS HIGH   // Deactivate is HIGH for IPSTUBE
 #define CALCDIMVALUE(x) (255 - x) // Dimming value is inverted for hardware dimming
 #endif
 

@@ -1070,6 +1070,7 @@ void updateCountdownDisplay(TFTs::show_t show) {
     static bool colonVisible = true;
     static unsigned long lastToggleTime = 0;
     unsigned long currentTime = millis();
+    uclock.getRemainingSeconds(); // one snapshot for all six digits this frame
 
     // Only blink the colon if countdown is still running
     if (!countdownFinished) {
@@ -1089,7 +1090,7 @@ void updateCountdownDisplay(TFTs::show_t show) {
         colonVisible = true;
     }
 
-    if (uclock.getRemainingSeconds() < 3600) { // Less than 1 hour
+    if (uclock.getCachedRemainingSeconds() < 3600) { // Less than 1 hour
         tfts.setDigit(HOURS_TENS, 0, show, TFTs::HOURGLASS);
 
         // Use 4 displays for mm:ss and 1 for the colon

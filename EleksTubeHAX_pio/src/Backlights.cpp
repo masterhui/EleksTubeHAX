@@ -76,19 +76,20 @@ void Backlights::loop()
   }
   else if (config->pattern == constant)
   {
+    // Do not call show() every loop — 34 WS2812s disable interrupts and stall WiFi.
     if (pattern_needs_init)
     {
       fill(phaseToColor(config->color_phase));
+      if (dimming)
+      {
+        setBrightness(0xFF >> max_intensity - BACKLIGHT_DIMMED_INTENSITY - 1);
+      }
+      else
+      {
+        setBrightness(0xFF >> max_intensity - config->intensity - 1);
+      }
+      show();
     }
-    if (dimming)
-    {
-      setBrightness(0xFF >> max_intensity - BACKLIGHT_DIMMED_INTENSITY - 1);
-    }
-    else
-    {
-      setBrightness(0xFF >> max_intensity - config->intensity - 1);
-    }
-    show();
   }
   else if (config->pattern == rainbow)
   {

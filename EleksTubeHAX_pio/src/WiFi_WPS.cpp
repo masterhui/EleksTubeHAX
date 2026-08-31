@@ -162,12 +162,34 @@ void WifiBegin()
 
 void WifiReconnect()
 {
-  if ((WifiState == disconnected) && ((millis() - TimeOfWifiReconnectAttempt) > WIFI_RETRY_CONNECTION_SEC * 1000))
+  wl_status_t st = WiFi.status();
+  if (st == WL_CONNECTED)
   {
-    Serial.println("Attempting WiFi reconnection...");
-    WiFi.reconnect();
-    TimeOfWifiReconnectAttempt = millis();
+    WifiState = connected;
+    return;
   }
+
+  // ESP32 can drop the AP without WIFI_STA_DISCONNECTED (zombie "connected" flag).
+  WifiState = disconnected;
+
+  if ((millis() - TimeOfWifiReconnectAttempt) <= (WIFI_RETRY_CONNECTION_SEC * 1000) && TimeOfWifiReconnectAttempt != 0)
+  {
+    return;
+  }
+
+  TimeOfWifiReconnectAttempt = millis();
+  Serial.print("WiFi not connected, status=");
+  Serial.print(st);
+  Serial.println(" — reconnecting");
+
+  // reconnect() is not enough if the STA stack is stuck; start a fresh association.
+  WiFi.disconnect();
+  delay(50);
+#ifdef WIFI_USE_WPS
+  WiFi.begin();
+#else
+  WiFi.begin(WIFI_SSID, WIFI_PASSWD);
+#endif
 }
 
 #ifdef WIFI_USE_WPS ////  WPS code

@@ -17,7 +17,7 @@ class Clock
 {
 public:
   Clock() : loop_time(0), local_time(0), time_valid(false), config(NULL),
-            countdown_start(0), countdown_duration(0), countdown_running(false) {}
+            countdown_start(0), countdown_duration(0), countdown_running(false), remaining_cache(0) {}
 
   // The global WiFi from WiFi.h must already be .begin()'d before calling Clock::begin()
   void begin(StoredConfig::Config::Clock *config_);
@@ -102,9 +102,10 @@ public:
   void stopCountdown();
   void toggleCountdownMode();
     bool isCountdownRunning() { return countdown_running; }
-  uint32_t getRemainingSeconds();
-  
-  // Methods to get countdown digits
+  uint32_t getRemainingSeconds(); // updates running flag + remaining_cache
+  uint32_t getCachedRemainingSeconds() { return remaining_cache; }
+
+  // Methods to get countdown digits (use remaining_cache; call getRemainingSeconds() first)
   uint8_t getCountdownHoursTens();
   uint8_t getCountdownHoursOnes();
   uint8_t getCountdownMinutesTens();
@@ -128,6 +129,7 @@ private:
   uint32_t countdown_start;
   uint32_t countdown_duration;
   bool countdown_running;
+  uint32_t remaining_cache;
 };
 
 extern Clock uclock;
