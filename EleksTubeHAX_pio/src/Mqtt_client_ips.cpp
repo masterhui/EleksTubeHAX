@@ -674,9 +674,9 @@ void callback(char *topic, byte *payload, unsigned int length)
       MqttCommandMainPower = strcmp(doc["state"], MQTT_STATE_ON) == 0;
       MqttCommandMainPowerReceived = true;
     }
-    if (doc["brightness"].is<int>())
+    if (!doc["brightness"].isNull())
     {
-      MqttCommandMainBrightness = doc["brightness"];
+      MqttCommandMainBrightness = doc["brightness"].as<int>();
       MqttCommandMainBrightnessReceived = true;
     }
     if (doc["effect"].is<const char *>())
