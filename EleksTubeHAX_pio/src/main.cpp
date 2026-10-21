@@ -24,6 +24,8 @@
 #include <SparkFun_APDS9960.h>
 #endif // NovelLife_SE Clone XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "main.h"
+#include <ArduinoOTA.h>
+#include <WiFi.h>
 
 // Constants
 
@@ -201,11 +203,44 @@ void setup()
   alternateMode = true;
 }
 
+static bool otaReady = false;
+static volatile bool otaActive = false;
+
+static void SetupOta()
+{
+  if (otaReady || WiFi.status() != WL_CONNECTED)
+  {
+    return;
+  }
+  ArduinoOTA.setHostname(DEVICE_NAME);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.onStart([]() {
+    otaActive = true;
+    Serial.println("OTA start");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    otaActive = false;
+    Serial.print("OTA error ");
+    Serial.println((int)error);
+  });
+  ArduinoOTA.begin();
+  otaReady = true;
+  Serial.print("OTA ready as ");
+  Serial.println(DEVICE_NAME);
+}
+
 void loop()
 {
   uint32_t millis_at_top = millis();
   // Do all the maintenance work
   WifiReconnect(); // if not connected attempt to reconnect
+  SetupOta();
+  ArduinoOTA.handle();
+  // WS2812 updates disable interrupts and drop OTA packets.
+  if (otaActive)
+  {
+    return;
+  }
 
   MqttLoopFrequently();
 

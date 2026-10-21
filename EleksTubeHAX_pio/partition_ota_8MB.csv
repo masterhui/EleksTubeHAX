@@ -1,0 +1,12 @@
+#
+# 8 MB IPSTUBE flash with two OTA app slots.
+# NVS keeps the old offset and size. otadata sits at the top of the flash.
+# app0 must be aligned on 0x10000
+#
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x009000, 0x007000,
+app0,     app,  ota_0,   0x010000, 0x140000,
+app1,     app,  ota_1,   0x150000, 0x140000,
+spiffs,   data, spiffs,  0x290000, 0x56E000,
+otadata,  data, ota,     0x7FE000, 0x002000,
+# end of 8 MB flash      0x800000
