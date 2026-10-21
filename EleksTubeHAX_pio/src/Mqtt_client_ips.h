@@ -90,6 +90,7 @@ void MqttLoopFrequently();
 void MqttLoopInFreeTime();
 void MqttReportBackEverything(bool force);
 void MqttSendCountdownFinished();
+void MqttSendCountdownOff();
 void MqttPublishCountdownRemaining();
 
 // Function declaration for setting the MQTT command mode

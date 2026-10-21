@@ -428,6 +428,7 @@ void loop()
     MqttCommandCountdownStartReceived = false;
     uclock.startCountdown(MqttCommandCountdownDuration);
     countdownHandled = false; // Reset the flag
+    MqttSendCountdownOff();   // so the next finished text is a real change
     currentMode = COUNTDOWN;
     
     // Reset the mode alternation timer when starting a new countdown
@@ -441,6 +442,9 @@ void loop()
   if (MqttCommandCountdownStopReceived)
   {
     uclock.stopCountdown();
+    // openHAB speaks and clears the lights on stop. Do not also publish
+    // the finished text, or that rule would speak a second time.
+    countdownHandled = true;
     MqttCommandCountdownStopReceived = false;
   }
 
