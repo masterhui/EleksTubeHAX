@@ -9,16 +9,13 @@ void TFTs::begin()
   chip_select.begin();
   chip_select.setAll();
 
-#ifdef DIM_WITH_ENABLE_PIN_PWM
-  // if hardware dimming is used, we need to attach the pin to a PWM channel
-  ledcAttachPin(TFT_ENABLE_PIN, TFT_PWM_CHANNEL);
-  ledcChangeFrequency(TFT_PWM_CHANNEL, 20000, 8);
-  // not needed here, because enableAllDisplays() is called later and it is called from there and if enabled is false, this does nothing
-  // ProcessUpdatedDimming();
-#else
-  // Set pin for turning display power on and off.
+  // Power-cycle the tubes on GPIO4 before ST7789 init. PWM is left off:
+  // attaching LEDC first can hold this active-low enable high.
   pinMode(TFT_ENABLE_PIN, OUTPUT);
-#endif
+  digitalWrite(TFT_ENABLE_PIN, DEACTIVATEDISPLAYS);
+  delay(200);
+  digitalWrite(TFT_ENABLE_PIN, ACTIVATEDISPLAYS);
+  delay(50);
   // Signal, that the image in the buffer is invalid and needs to be reloaded and refilled
   InvalidateImageInBuffer();
 
@@ -49,15 +46,8 @@ void TFTs::reinit()
   chip_select.begin();
   chip_select.setAll();
 
-#ifdef DIM_WITH_ENABLE_PIN_PWM
-  ledcAttachPin(TFT_ENABLE_PIN, TFT_PWM_CHANNEL);
-  ledcChangeFrequency(TFT_PWM_CHANNEL, 20000, 8);
-  // same thing as on first init, not needed here, because enableAllDisplays() is called later and it is called from there and if enabled is false, this does nothing
-  // ProcessUpdatedDimming();
-#else
-  // Turn power on to displays.
   pinMode(TFT_ENABLE_PIN, OUTPUT);
-#endif
+  digitalWrite(TFT_ENABLE_PIN, ACTIVATEDISPLAYS);
   // Signal, that the image in the buffer is invalid and needs to be reloaded and refilled
   // needed, because the last drawing can be long time ago?!?
   InvalidateImageInBuffer();
@@ -276,17 +266,33 @@ void TFTs::InvalidateImageInBuffer()
 void TFTs::ProcessUpdatedDimming()
 {
 #ifdef DIM_WITH_ENABLE_PIN_PWM
-  // hardware dimming is done via PWM on the pin defined by TFT_ENABLE_PIN
-  // ONLY for IPSTUBE clocks in the moment! Other clocks may be damaged!
-  if (enabled)
+  // GPIO4 is active-low through Q1. Full on and full off stay plain GPIO.
+  // LEDC is attached only for a level in between, and only after ledcSetup.
+  // Attaching first reads an out-of-range duty and holds the tubes off.
+  static bool pwmAttached = false;
+  uint32_t duty = enabled ? CALCDIMVALUE(dimming) : 255;
+  if (duty > 255)
   {
-    ledcWrite(TFT_PWM_CHANNEL, CALCDIMVALUE(dimming));
+    duty = 255;
   }
-  else
+  if (duty == 0 || duty == 255)
   {
-    // no dimming means 255 (full brightness)
-    ledcWrite(TFT_PWM_CHANNEL, CALCDIMVALUE(0));
+    if (pwmAttached)
+    {
+      ledcDetachPin(TFT_ENABLE_PIN);
+      pwmAttached = false;
+    }
+    pinMode(TFT_ENABLE_PIN, OUTPUT);
+    digitalWrite(TFT_ENABLE_PIN, duty == 0 ? ACTIVATEDISPLAYS : DEACTIVATEDISPLAYS);
+    return;
   }
+  if (!pwmAttached)
+  {
+    ledcSetup(TFT_PWM_CHANNEL, 20000, 8);
+    ledcAttachPin(TFT_ENABLE_PIN, TFT_PWM_CHANNEL);
+    pwmAttached = true;
+  }
+  ledcWrite(TFT_PWM_CHANNEL, duty);
 #else
   // "software" dimming is done via alpha blending in the image drawing function
   // signal that the image in the buffer is invalid and needs to be reloaded and refilled

@@ -26,7 +26,6 @@
 #include "main.h"
 #include <ArduinoOTA.h>
 #include <WiFi.h>
-#include <esp_sleep.h>
 
 // Constants
 
@@ -216,7 +215,7 @@ static void SetupOta()
   }
   ArduinoOTA.setHostname(DEVICE_NAME);
   ArduinoOTA.setPassword(OTA_PASSWORD);
-  // The library's ESP.restart() returns while this board stays frozen.
+  // Reboot from the loop, after the OTA socket is closed.
   ArduinoOTA.setRebootOnSuccess(false);
   ArduinoOTA.onStart([]() {
     otaActive = true;
@@ -242,9 +241,9 @@ static void RebootAfterOta()
   Serial.println("OTA restart");
   Serial.flush();
   delay(300);
-  // Timer wakeup resets the CPU. The CH340 RTS line does not reach EN.
-  esp_sleep_enable_timer_wakeup(200000);
-  esp_deep_sleep_start();
+  // This Arduino bootloader skips otadata on a deep-sleep wake and loads
+  // the same app again. A software reset reads the new OTA slot.
+  ESP.restart();
 }
 
 void loop()

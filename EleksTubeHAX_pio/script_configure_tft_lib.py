@@ -14,11 +14,12 @@ print("===== copying TFT config files ===== ")
 # source file location: EleksTubeHAX_pio\src\GLOBAL_DEFINES.h  &  _USER_DEFINES.h
 # target file location: EleksTubeHAX_pio\.pio\libdeps\esp32dev8MB\TFT_eSPI\User_Setup.h
 
-# Get the board type from the used environment
-board = env.GetProjectOption("board")
+# Libdeps are stored per PlatformIO environment, not per board.
+# env:ota uses the esp32dev8MB board but compiles .pio/libdeps/ota.
+env_name = env["PIOENV"]
 
-# define target file and directory with the name of the board in the path
-targetDir = "./.pio/libdeps/" + board + "/TFT_eSPI"
+# define target file and directory with the name of the environment in the path
+targetDir = "./.pio/libdeps/" + env_name + "/TFT_eSPI"
 targetFile = targetDir + "/User_Setup.h"
 
 # copy using Python libraries
