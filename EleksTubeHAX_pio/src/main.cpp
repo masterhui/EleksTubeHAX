@@ -26,6 +26,7 @@
 #include "main.h"
 #include <ArduinoOTA.h>
 #include <WiFi.h>
+#include <esp_sleep.h>
 
 // Constants
 
@@ -205,6 +206,7 @@ void setup()
 
 static bool otaReady = false;
 static volatile bool otaActive = false;
+static volatile bool otaReboot = false;
 
 static void SetupOta()
 {
@@ -214,9 +216,15 @@ static void SetupOta()
   }
   ArduinoOTA.setHostname(DEVICE_NAME);
   ArduinoOTA.setPassword(OTA_PASSWORD);
+  // The library's ESP.restart() returns while this board stays frozen.
+  ArduinoOTA.setRebootOnSuccess(false);
   ArduinoOTA.onStart([]() {
     otaActive = true;
     Serial.println("OTA start");
+  });
+  ArduinoOTA.onEnd([]() {
+    otaReboot = true;
+    Serial.println("OTA done");
   });
   ArduinoOTA.onError([](ota_error_t error) {
     otaActive = false;
@@ -229,6 +237,16 @@ static void SetupOta()
   Serial.println(DEVICE_NAME);
 }
 
+static void RebootAfterOta()
+{
+  Serial.println("OTA restart");
+  Serial.flush();
+  delay(300);
+  // Timer wakeup resets the CPU. The CH340 RTS line does not reach EN.
+  esp_sleep_enable_timer_wakeup(200000);
+  esp_deep_sleep_start();
+}
+
 void loop()
 {
   uint32_t millis_at_top = millis();
@@ -236,6 +254,10 @@ void loop()
   WifiReconnect(); // if not connected attempt to reconnect
   SetupOta();
   ArduinoOTA.handle();
+  if (otaReboot)
+  {
+    RebootAfterOta();
+  }
   // WS2812 updates disable interrupts and drop OTA packets.
   if (otaActive)
   {
